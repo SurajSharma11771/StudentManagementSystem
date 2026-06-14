@@ -169,7 +169,10 @@
                     <td>{{ s[1] }}</td>
 
                     <td>
-
+                        <a href="/student/{{ s[1] }}"
+                            class="btn btn-info btn-sm">
+                            Profile
+                        </a>    
                         <!-- EDIT -->
                         <button class="btn btn-warning btn-sm"
                             data-bs-toggle="modal"
@@ -248,6 +251,10 @@ new Chart(ctx, {
         }]
     }
 });
+function setEditData(roll, name) {
+    document.getElementById("editRoll").value = roll;
+    document.getElementById("editName").value = name;
+}
 </script>
 
 </body>

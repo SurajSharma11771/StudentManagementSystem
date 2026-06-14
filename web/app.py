@@ -11,7 +11,9 @@ from app.database_sqlite import (
     update_user_role,
     total_students,
     total_users,
-    recent_students
+    recent_students,
+    get_student_by_roll,
+    update_student_profile
 )
 from web.auth import (
     login_user,
@@ -104,9 +106,15 @@ def update():
     if not is_logged_in():
         return redirect("/login")
 
-    roll = int(request.form["roll"])
+    roll = request.form.get("roll", "").strip()
+
+    if not roll:
+        return "Roll number missing", 400
+
     name = request.form["name"]
-    update_student(roll, name)
+
+    update_student(int(roll), name)
+
     return redirect("/")
 
 @app.route("/search", methods=["GET"])
@@ -125,6 +133,23 @@ def search():
     ]
 
     return render_template("index.html", students=filtered, total=len(students), query=query)
+
+@app.route("/student/<int:roll>")
+def student_profile(roll):
+
+    if not is_logged_in():
+        return redirect("/login")
+
+    student = get_student_by_roll(roll)
+
+    if student is None:
+        return "Student Not Found", 404
+
+    return render_template(
+        "student_profile.html",
+        student=student
+    )
+
 
 @app.route("/users")
 def users():

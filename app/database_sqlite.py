@@ -29,7 +29,7 @@ def init_db():
     photo TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
-        )
+                   
     """)
 
     conn.commit()
@@ -246,3 +246,68 @@ def recent_students():
     conn.close()
 
     return students
+
+
+def get_student_by_roll(roll):
+    conn = connect()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT *
+        FROM students
+        WHERE roll=?
+    """, (roll,))
+
+    student = cursor.fetchone()
+
+    conn.close()
+
+    return student
+
+
+def update_student_profile(
+    roll,
+    email,
+    phone,
+    address,
+    dob,
+    course,
+    semester,
+    photo
+):
+
+    conn = connect()
+
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    UPDATE students
+
+    SET
+
+    email=?,
+    phone=?,
+    address=?,
+    dob=?,
+    course=?,
+    semester=?,
+    photo=?
+
+    WHERE roll=?
+
+    """,(
+
+        email,
+        phone,
+        address,
+        dob,
+        course,
+        semester,
+        photo,
+        roll
+
+    ))
+
+    conn.commit()
+
+    conn.close()
