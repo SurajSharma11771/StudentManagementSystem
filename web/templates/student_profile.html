@@ -23,6 +23,18 @@
 
 <div class="card-body">
 
+{% if student[9] %}
+    <img src="{{ url_for('static', filename='uploads/students/' + student[9]) }}"
+         class="rounded-circle mb-3"
+         width="160"
+         height="160">
+{% else %}
+    <img src="{{ url_for('static', filename='images/default-avatar.png') }}"
+         class="rounded-circle mb-3"
+         width="160"
+         height="160">
+{% endif %}
+
 <h2>{{ student[1] }}</h2>
 
 <hr>
@@ -40,6 +52,15 @@
 <p><strong>Course:</strong> {{ student[7] or "Not Added" }}</p>
 
 <p><strong>Semester:</strong> {{ student[8] or "Not Added" }}</p>
+
+<hr>
+
+<h5>Upload Photo</h5>
+
+<form action="/student/photo/{{ student[2] }}" method="POST" enctype="multipart/form-data">
+    <input type="file" name="photo" class="form-control mb-2" required>
+    <button class="btn btn-primary">Upload Photo</button>
+</form>
 
 </div>
 

@@ -311,3 +311,157 @@ def update_student_profile(
     conn.commit()
 
     conn.close()
+
+def mark_attendance(roll, date, status):
+    conn = connect()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT id FROM attendance
+        WHERE roll=? AND date=?
+    """, (roll, date))
+
+    existing = cursor.fetchone()
+
+    if existing:
+        cursor.execute("""
+            UPDATE attendance
+            SET status=?
+            WHERE roll=? AND date=?
+        """, (status, roll, date))
+    else:
+        cursor.execute("""
+            INSERT INTO attendance (roll, date, status)
+            VALUES (?, ?, ?)
+        """, (roll, date, status))
+
+    conn.commit()
+    conn.close()
+
+
+def get_attendance():
+    conn = connect()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT attendance.id, students.name, attendance.roll, attendance.date, attendance.status
+        FROM attendance
+        LEFT JOIN students ON students.roll = attendance.roll
+        ORDER BY attendance.date DESC
+    """)
+
+    data = cursor.fetchall()
+    conn.close()
+    return data
+
+def attendance_summary():
+    conn = connect()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT status, COUNT(*) FROM attendance GROUP BY status")
+    rows = cursor.fetchall()
+
+    conn.close()
+
+    summary = {
+        "Present": 0,
+        "Absent": 0,
+        "Leave": 0
+    }
+
+    for status, count in rows:
+        summary[status] = count
+
+    return summary
+
+def add_marks(roll, subject, internal, external):
+    total = internal + external
+
+    conn = connect()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        INSERT INTO marks (roll, subject, internal, external, total)
+        VALUES (?, ?, ?, ?, ?)
+    """, (roll, subject, internal, external, total))
+
+    conn.commit()
+    conn.close()
+
+
+def get_marks():
+    conn = connect()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT marks.id, students.name, marks.roll, marks.subject,
+               marks.internal, marks.external, marks.total
+        FROM marks
+        LEFT JOIN students ON students.roll = marks.roll
+        ORDER BY marks.id DESC
+    """)
+
+    data = cursor.fetchall()
+    conn.close()
+    return data
+
+def marks_summary():
+    conn = connect()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT COUNT(*), MAX(total), AVG(total) FROM marks")
+    row = cursor.fetchone()
+
+    conn.close()
+
+    return {
+        "records": row[0] or 0,
+        "highest": row[1] or 0,
+        "average": round(row[2] or 0, 2)
+    }
+
+def add_fee(roll, total_fee, paid_amount, payment_date):
+    pending_amount = total_fee - paid_amount
+
+    conn = connect()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        INSERT INTO fees (roll, total_fee, paid_amount, pending_amount, payment_date)
+        VALUES (?, ?, ?, ?, ?)
+    """, (roll, total_fee, paid_amount, pending_amount, payment_date))
+
+    conn.commit()
+    conn.close()
+
+
+def get_fees():
+    conn = connect()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT fees.id, students.name, fees.roll, fees.total_fee,
+               fees.paid_amount, fees.pending_amount, fees.payment_date
+        FROM fees
+        LEFT JOIN students ON students.roll = fees.roll
+        ORDER BY fees.id DESC
+    """)
+
+    data = cursor.fetchall()
+    conn.close()
+    return data
+
+def fees_summary():
+    conn = connect()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT SUM(total_fee), SUM(paid_amount), SUM(pending_amount) FROM fees")
+    row = cursor.fetchone()
+
+    conn.close()
+
+    return {
+        "total": row[0] or 0,
+        "paid": row[1] or 0,
+        "pending": row[2] or 0
+    }

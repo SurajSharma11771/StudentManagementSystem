@@ -13,7 +13,16 @@ from app.database_sqlite import (
     total_users,
     recent_students,
     get_student_by_roll,
-    update_student_profile
+    update_student_profile,
+    mark_attendance,
+    get_attendance,
+    attendance_summary,
+    add_marks,
+    get_marks,
+    marks_summary,
+    add_fee,
+    get_fees,
+    fees_summary
 )
 from web.auth import (
     login_user,
@@ -21,11 +30,21 @@ from web.auth import (
     is_admin,
     logout_user
 )
+import os
+from werkzeug.utils import secure_filename
+from PIL import Image
+
 app = Flask(__name__)
+UPLOAD_FOLDER = "web/static/uploads/students"
+ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "webp"}
+
+app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 app.secret_key = "mysecretkey"
 
 init_db()
 
+def allowed_file(filename):
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 # 🔐 LOGIN PAGE
 @app.route("/login", methods=["GET", "POST"])
@@ -134,6 +153,97 @@ def search():
 
     return render_template("index.html", students=filtered, total=len(students), query=query)
 
+@app.route("/attendance")
+def attendance_page():
+    if not is_logged_in():
+        return redirect("/login")
+
+    students = get_students()
+    attendance = get_attendance()
+    summary = attendance_summary()
+
+    return render_template(
+        "attendance.html",
+        students=students,
+        attendance=attendance,
+        summary=summary
+    )
+
+@app.route("/marks")
+def marks_page():
+    if not is_logged_in():
+        return redirect("/login")
+
+    students = get_students()
+    marks = get_marks()
+    summary = marks_summary()
+
+    return render_template(
+        "marks.html",
+        students=students,
+        marks=marks,
+        summary=summary
+    )
+
+@app.route("/fees")
+def fees_page():
+    if not is_logged_in():
+        return redirect("/login")
+
+    students = get_students()
+    fees = get_fees()
+    summary = fees_summary()
+
+    return render_template(
+        "fees.html",
+        students=students,
+        fees=fees,
+        summary=summary
+    )
+
+
+@app.route("/fees/add", methods=["POST"])
+def fees_add():
+    if not is_logged_in():
+        return redirect("/login")
+
+    roll = int(request.form["roll"])
+    total_fee = int(request.form["total_fee"])
+    paid_amount = int(request.form["paid_amount"])
+    payment_date = request.form["payment_date"]
+
+    add_fee(roll, total_fee, paid_amount, payment_date)
+
+    return redirect("/fees")
+
+@app.route("/marks/add", methods=["POST"])
+def marks_add():
+    if not is_logged_in():
+        return redirect("/login")
+
+    roll = int(request.form["roll"])
+    subject = request.form["subject"]
+    internal = int(request.form["internal"])
+    external = int(request.form["external"])
+
+    add_marks(roll, subject, internal, external)
+
+    return redirect("/marks")
+
+
+@app.route("/attendance/mark", methods=["POST"])
+def attendance_mark():
+    if not is_logged_in():
+        return redirect("/login")
+
+    roll = int(request.form["roll"])
+    date = request.form["date"]
+    status = request.form["status"]
+
+    mark_attendance(roll, date, status)
+
+    return redirect("/attendance")
+
 @app.route("/student/<int:roll>")
 def student_profile(roll):
 
@@ -150,6 +260,46 @@ def student_profile(roll):
         student=student
     )
 
+@app.route("/student/photo/<int:roll>", methods=["POST"])
+def upload_student_photo(roll):
+    if not is_logged_in():
+        return redirect("/login")
+
+    student = get_student_by_roll(roll)
+
+    if student is None:
+        return "Student Not Found", 404
+
+    if "photo" not in request.files:
+        return redirect(f"/student/{roll}")
+
+    photo = request.files["photo"]
+
+    if photo.filename == "":
+        return redirect(f"/student/{roll}")
+
+    if photo and allowed_file(photo.filename):
+        ext = photo.filename.rsplit(".", 1)[1].lower()
+        filename = secure_filename(f"student_{roll}.{ext}")
+
+        filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+
+        image = Image.open(photo)
+        image = image.resize((300, 300))
+        image.save(filepath)
+
+        update_student_profile(
+            roll,
+            student[3],
+            student[4],
+            student[5],
+            student[6],
+            student[7],
+            student[8],
+            filename
+        )
+
+    return redirect(f"/student/{roll}")
 
 @app.route("/users")
 def users():
