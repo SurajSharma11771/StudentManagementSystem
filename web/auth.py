@@ -1,14 +1,16 @@
-from flask import session, redirect
-
-# simple demo credentials (later DB me shift kar sakte ho)
-USERNAME = "admin"
-PASSWORD = "1234"
+from flask import session
+from app.database_sqlite import verify_user
 
 
 def login_user(username, password):
-    if username == USERNAME and password == PASSWORD:
-        session["user"] = username
+
+    user = verify_user(username, password)
+
+    if user:
+        session["user"] = user["username"]
+        session["role"] = user["role"]
         return True
+
     return False
 
 
@@ -18,3 +20,7 @@ def is_logged_in():
 
 def logout_user():
     session.pop("user", None)
+    session.pop("role", None)
+    
+def is_admin():
+    return session.get("role") == "admin"
