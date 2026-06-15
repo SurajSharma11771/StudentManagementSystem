@@ -1,3 +1,4 @@
+from openpyxl import Workbook
 from flask import Flask, render_template, request, redirect, session
 from app.database_sqlite import (
     init_db,
@@ -22,7 +23,8 @@ from app.database_sqlite import (
     marks_summary,
     add_fee,
     get_fees,
-    fees_summary
+    fees_summary,
+    get_student_by_roll
 )
 from web.auth import (
     login_user,
@@ -33,6 +35,13 @@ from web.auth import (
 import os
 from werkzeug.utils import secure_filename
 from PIL import Image
+
+
+from io import BytesIO
+from flask import send_file
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib import colors
 
 app = Flask(__name__)
 UPLOAD_FOLDER = "web/static/uploads/students"
@@ -352,8 +361,377 @@ def remove_user(user_id):
 
     return redirect("/users")
 
+@app.route("/reports/students/pdf")
+def student_report_pdf():
+    if not is_logged_in():
+        return redirect("/login")
+
+    students = get_students()
+
+    buffer = BytesIO()
+
+    doc = SimpleDocTemplate(buffer)
+    styles = getSampleStyleSheet()
+    content = []
+
+    content.append(Paragraph("Student Profile Report", styles["Title"]))
+    content.append(Spacer(1, 12))
+
+    table_data = [[
+        "Name", "Roll", "Email", "Phone", "Course", "Semester"
+    ]]
+
+    for s in students:
+        student = get_student_by_roll(s[1])
+
+        if student is None:
+            continue
+
+        table_data.append([
+            str(student[1]),
+            str(student[2]),
+            str(student[3] or "-"),
+            str(student[4] or "-"),
+            str(student[7] or "-"),
+            str(student[8] or "-")
+        ])
+
+    table = Table(table_data)
+
+    table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+        ("GRID", (0, 0), (-1, -1), 1, colors.black),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("BACKGROUND", (0, 1), (-1, -1), colors.beige),
+    ]))
+
+    content.append(table)
+
+    doc.build(content)
+
+    buffer.seek(0)
+
+    return send_file(
+        buffer,
+        as_attachment=True,
+        download_name="students_report.pdf",
+        mimetype="application/pdf"
+    )
+
+@app.route("/reports/students/excel")
+def student_report_excel():
+    if not is_logged_in():
+        return redirect("/login")
+
+    students = get_students()
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Students"
+
+    ws.append(["Name", "Roll", "Email", "Phone", "Course", "Semester"])
+
+    for s in students:
+        student = get_student_by_roll(s[1])
+
+        if student is None:
+            continue
+
+        ws.append([
+            student[1],
+            student[2],
+            student[3] or "-",
+            student[4] or "-",
+            student[7] or "-",
+            student[8] or "-"
+        ])
+
+    buffer = BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+
+    return send_file(
+        buffer,
+        as_attachment=True,
+        download_name="students_report.xlsx",
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
+@app.route("/reports/attendance/pdf")
+def attendance_report_pdf():
+    if not is_logged_in():
+        return redirect("/login")
+
+    attendance = get_attendance()
+
+    buffer = BytesIO()
+
+    doc = SimpleDocTemplate(buffer)
+    styles = getSampleStyleSheet()
+    content = []
+
+    content.append(Paragraph("Attendance Report", styles["Title"]))
+    content.append(Spacer(1, 12))
+
+    table_data = [[
+        "Student",
+        "Roll",
+        "Date",
+        "Status"
+    ]]
+
+    for a in attendance:
+        table_data.append([
+            str(a[1] or "-"),
+            str(a[2]),
+            str(a[3]),
+            str(a[4])
+        ])
+
+    table = Table(table_data)
+
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.grey),
+        ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
+        ('GRID', (0,0), (-1,-1), 1, colors.black),
+        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+        ('BACKGROUND', (0,1), (-1,-1), colors.beige),
+    ]))
+
+    content.append(table)
+
+    doc.build(content)
+
+    buffer.seek(0)
+
+    return send_file(
+        buffer,
+        as_attachment=True,
+        download_name="attendance_report.pdf",
+        mimetype="application/pdf"
+    )
+
+@app.route("/reports/attendance/excel")
+def attendance_report_excel():
+    if not is_logged_in():
+        return redirect("/login")
+
+    attendance = get_attendance()
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Attendance"
+
+    ws.append(["Student", "Roll", "Date", "Status"])
+
+    for a in attendance:
+        ws.append([
+            a[1] or "-",
+            a[2],
+            a[3],
+            a[4]
+        ])
+
+    buffer = BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+
+    return send_file(
+        buffer,
+        as_attachment=True,
+        download_name="attendance_report.xlsx",
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
+@app.route("/reports/marks/pdf")
+def marks_report_pdf():
+    if not is_logged_in():
+        return redirect("/login")
+
+    marks = get_marks()
+
+    buffer = BytesIO()
+
+    doc = SimpleDocTemplate(buffer)
+    styles = getSampleStyleSheet()
+    content = []
+
+    content.append(Paragraph("Marks Report", styles["Title"]))
+    content.append(Spacer(1, 12))
+
+    table_data = [[
+        "Student",
+        "Roll",
+        "Subject",
+        "Internal",
+        "External",
+        "Total"
+    ]]
+
+    for m in marks:
+        table_data.append([
+            str(m[1] or "-"),
+            str(m[2]),
+            str(m[3]),
+            str(m[4]),
+            str(m[5]),
+            str(m[6])
+        ])
+
+    table = Table(table_data)
+
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.grey),
+        ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
+        ('GRID', (0,0), (-1,-1), 1, colors.black),
+        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+        ('BACKGROUND', (0,1), (-1,-1), colors.beige),
+    ]))
+
+    content.append(table)
+
+    doc.build(content)
+
+    buffer.seek(0)
+
+    return send_file(
+        buffer,
+        as_attachment=True,
+        download_name="marks_report.pdf",
+        mimetype="application/pdf"
+    )
+
+@app.route("/reports/marks/excel")
+def marks_report_excel():
+    if not is_logged_in():
+        return redirect("/login")
+
+    marks = get_marks()
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Marks"
+
+    ws.append(["Student", "Roll", "Subject", "Internal", "External", "Total"])
+
+    for m in marks:
+        ws.append([
+            m[1] or "-",
+            m[2],
+            m[3],
+            m[4],
+            m[5],
+            m[6]
+        ])
+
+    buffer = BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+
+    return send_file(
+        buffer,
+        as_attachment=True,
+        download_name="marks_report.xlsx",
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
+@app.route("/reports/fees/pdf")
+def fees_report_pdf():
+    if not is_logged_in():
+        return redirect("/login")
+
+    fees = get_fees()
+
+    buffer = BytesIO()
+
+    doc = SimpleDocTemplate(buffer)
+    styles = getSampleStyleSheet()
+    content = []
+
+    content.append(Paragraph("Fees Report", styles["Title"]))
+    content.append(Spacer(1, 12))
+
+    table_data = [[
+        "Student",
+        "Roll",
+        "Total Fee",
+        "Paid",
+        "Pending",
+        "Date"
+    ]]
+
+    for f in fees:
+        table_data.append([
+            str(f[1] or "-"),
+            str(f[2]),
+            f"₹{f[3]}",
+            f"₹{f[4]}",
+            f"₹{f[5]}",
+            str(f[6])
+        ])
+
+    table = Table(table_data)
+
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.grey),
+        ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
+        ('GRID', (0,0), (-1,-1), 1, colors.black),
+        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+        ('BACKGROUND', (0,1), (-1,-1), colors.beige),
+    ]))
+
+    content.append(table)
+    doc.build(content)
+    buffer.seek(0)
+
+    return send_file(
+        buffer,
+        as_attachment=True,
+        download_name="fees_report.pdf",
+        mimetype="application/pdf"
+    )
+
+
+@app.route("/reports/fees/excel")
+def fees_report_excel():
+    if not is_logged_in():
+        return redirect("/login")
+
+    fees = get_fees()
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Fees"
+
+    ws.append(["Student", "Roll", "Total Fee", "Paid", "Pending", "Date"])
+
+    for f in fees:
+        ws.append([
+            f[1] or "-",
+            f[2],
+            f[3],
+            f[4],
+            f[5],
+            f[6]
+        ])
+
+    buffer = BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+
+    return send_file(
+        buffer,
+        as_attachment=True,
+        download_name="fees_report.xlsx",
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
+
+
 if __name__ == "__main__":
     app.run(debug=True)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
+
