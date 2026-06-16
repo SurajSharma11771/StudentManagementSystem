@@ -1,3 +1,4 @@
+from flask import Flask, render_template, request, redirect, session, send_file, jsonify
 from openpyxl import Workbook
 from flask import Flask, render_template, request, redirect, session
 from app.database_sqlite import (
@@ -49,11 +50,20 @@ ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "webp"}
 
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 app.secret_key = "mysecretkey"
+API_KEY = "student-erp-secret-key"
 
 init_db()
 
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def api_key_required():
+    key = request.headers.get("X-API-KEY")
+
+    if key != API_KEY:
+        return False
+
+    return True
 
 # 🔐 LOGIN PAGE
 @app.route("/login", methods=["GET", "POST"])
@@ -726,6 +736,156 @@ def fees_report_excel():
         download_name="fees_report.xlsx",
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
+@app.route("/api/students")
+def api_students():
+    if not is_logged_in():
+        return jsonify({"error": "Unauthorized"}), 401
+
+    students = get_students()
+
+    data = []
+
+    for s in students:
+        student = get_student_by_roll(s[1])
+
+        if student is None:
+            continue
+
+        data.append({
+            "id": student[0],
+            "name": student[1],
+            "roll": student[2],
+            "email": student[3],
+            "phone": student[4],
+            "address": student[5],
+            "dob": student[6],
+            "course": student[7],
+            "semester": student[8],
+            "photo": student[9],
+            "created_at": student[10]
+        })
+
+    return jsonify(data)
+
+
+@app.route("/api/attendance")
+def api_attendance():
+    if not is_logged_in():
+        return jsonify({"error": "Unauthorized"}), 401
+
+    attendance = get_attendance()
+
+    data = []
+
+    for a in attendance:
+        data.append({
+            "id": a[0],
+            "student": a[1],
+            "roll": a[2],
+            "date": a[3],
+            "status": a[4]
+        })
+
+    return jsonify(data)
+
+@app.route("/api/marks")
+def api_marks():
+    if not is_logged_in():
+        return jsonify({"error": "Unauthorized"}), 401
+
+    marks = get_marks()
+
+    data = []
+
+    for m in marks:
+        data.append({
+            "id": m[0],
+            "student": m[1],
+            "roll": m[2],
+            "subject": m[3],
+            "internal": m[4],
+            "external": m[5],
+            "total": m[6]
+        })
+
+    return jsonify(data)
+
+@app.route("/api/fees")
+def api_fees():
+    if not is_logged_in():
+        return jsonify({"error": "Unauthorized"}), 401
+
+    fees = get_fees()
+
+    data = []
+
+    for f in fees:
+        data.append({
+            "id": f[0],
+            "student": f[1],
+            "roll": f[2],
+            "total_fee": f[3],
+            "paid_amount": f[4],
+            "pending_amount": f[5],
+            "payment_date": f[6]
+        })
+
+    return jsonify(data)
+
+@app.route("/api/students", methods=["POST"])
+def api_add_student():
+    #if not is_logged_in():
+    #   return jsonify({"error": "Unauthorized"}), 401
+
+    if not api_key_required():
+        return jsonify({"error": "Invalid or missing API key"}), 401
+    
+    data = request.get_json()
+
+    name = data.get("name")
+    roll = data.get("roll")
+
+    if not name or not roll:
+        return jsonify({"error": "Name and roll are required"}), 400
+
+    add_student(name, int(roll))
+
+    return jsonify({
+        "message": "Student added successfully",
+        "student": {
+            "name": name,
+            "roll": int(roll)
+        }
+    }), 201
+
+@app.route("/api/students/<int:roll>", methods=["PUT"])
+def api_update_student(roll):
+    data = request.get_json()
+    if not api_key_required():
+        return jsonify({"error": "Invalid or missing API key"}), 401
+    name = data.get("name")
+
+    if not name:
+        return jsonify({"error": "Name is required"}), 400
+
+    update_student(roll, name)
+
+    return jsonify({
+        "message": "Student updated successfully",
+        "roll": roll,
+        "name": name
+    })
+
+@app.route("/api/students/<int:roll>", methods=["DELETE"])
+def api_delete_student(roll):
+    delete_student(roll)
+    if not api_key_required():
+        return jsonify({"error": "Invalid or missing API key"}), 401
+    return jsonify({
+        "message": "Student deleted successfully",
+        "roll": roll
+    })
 
 
 

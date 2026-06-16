@@ -1,9 +1,13 @@
 import sqlite3
 import os
 from werkzeug.security import generate_password_hash, check_password_hash
+import psycopg2
+from psycopg2.extras import RealDictCursor
+
 
 DB_PATH = "data/students.db"
 
+DATABASE_URL = os.environ.get("DATABASE_URL")
 
 def connect():
     return sqlite3.connect(DB_PATH)
