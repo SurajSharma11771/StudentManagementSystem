@@ -1,16 +1,13 @@
-import sqlite3
 import os
+import sqlite3
 from werkzeug.security import generate_password_hash, check_password_hash
-import psycopg2
-from psycopg2.extras import RealDictCursor
+from app.db import connect, is_postgres
 
 
-DB_PATH = "data/students.db"
-
-DATABASE_URL = os.environ.get("DATABASE_URL")
-
-def connect():
-    return sqlite3.connect(DB_PATH)
+def q(sql):
+    if is_postgres():
+        return sql.replace("?", "%s")
+    return sql
 
 
 def init_db():
@@ -19,74 +16,88 @@ def init_db():
     conn = connect()
     cursor = conn.cursor()
 
-    cursor.execute("""
+    if is_postgres():
+        id_type = "SERIAL PRIMARY KEY"
+    else:
+        id_type = "INTEGER PRIMARY KEY AUTOINCREMENT"
+
+    cursor.execute(f"""
         CREATE TABLE IF NOT EXISTS students (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    roll INTEGER UNIQUE NOT NULL,
-    email TEXT,
-    phone TEXT,
-    address TEXT,
-    dob TEXT,
-    course TEXT,
-    semester TEXT,
-    photo TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-                   
+            id {id_type},
+            name TEXT NOT NULL,
+            roll INTEGER UNIQUE NOT NULL,
+            email TEXT,
+            phone TEXT,
+            address TEXT,
+            dob TEXT,
+            course TEXT,
+            semester TEXT,
+            photo TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
     """)
 
-    conn.commit()
-    conn.close()
-    create_users_table()
-    
-def create_users_table():
-    conn = connect()
-    cur = conn.cursor()
-
-    cur.execute("""
+    cursor.execute(f"""
         CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id {id_type},
             username TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL
+            password TEXT NOT NULL,
+            role TEXT DEFAULT 'staff'
+        )
+    """)
+
+    cursor.execute(f"""
+        CREATE TABLE IF NOT EXISTS attendance (
+            id {id_type},
+            roll INTEGER NOT NULL,
+            date TEXT NOT NULL,
+            status TEXT NOT NULL
+        )
+    """)
+
+    cursor.execute(f"""
+        CREATE TABLE IF NOT EXISTS marks (
+            id {id_type},
+            roll INTEGER NOT NULL,
+            subject TEXT NOT NULL,
+            internal INTEGER NOT NULL,
+            external INTEGER NOT NULL,
+            total INTEGER NOT NULL
+        )
+    """)
+
+    cursor.execute(f"""
+        CREATE TABLE IF NOT EXISTS fees (
+            id {id_type},
+            roll INTEGER NOT NULL,
+            total_fee INTEGER NOT NULL,
+            paid_amount INTEGER NOT NULL,
+            pending_amount INTEGER NOT NULL,
+            payment_date TEXT NOT NULL
         )
     """)
 
     conn.commit()
     conn.close()
-    
+
+
 def add_student(name, roll):
     conn = connect()
     cursor = conn.cursor()
 
     try:
-        cursor.execute("INSERT INTO students (name, roll) VALUES (?, ?)", (name, roll))
+        cursor.execute(
+            q("INSERT INTO students (name, roll) VALUES (?, ?)"),
+            (name, roll)
+        )
         conn.commit()
         print("Student added successfully!")
-    except:
-        print("Student already exists!")
+    except Exception as e:
+        conn.rollback()
+        print("Student already exists!", e)
     finally:
         conn.close()
 
-def add_user(username, password):
-    conn = connect()
-    cursor = conn.cursor()
-
-    hashed_password = generate_password_hash(password)
-
-    try:
-        cursor.execute(
-            "INSERT INTO users (username, password) VALUES (?, ?)",
-            (username, hashed_password)
-        )
-
-        conn.commit()
-
-    except sqlite3.IntegrityError:
-        print("Username already exists.")
-
-    finally:
-        conn.close()
 
 def get_students():
     conn = connect()
@@ -103,14 +114,12 @@ def delete_student(roll):
     conn = connect()
     cursor = conn.cursor()
 
-    cursor.execute("DELETE FROM students WHERE roll=?", (roll,))
+    cursor.execute(
+        q("DELETE FROM students WHERE roll=?"),
+        (roll,)
+    )
+
     conn.commit()
-
-    if cursor.rowcount == 0:
-        print("Student not found!")
-    else:
-        print("Student deleted!")
-
     conn.close()
 
 
@@ -118,9 +127,12 @@ def search_student(roll):
     conn = connect()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT name, roll FROM students WHERE roll=?", (roll,))
-    data = cursor.fetchone()
+    cursor.execute(
+        q("SELECT name, roll FROM students WHERE roll=?"),
+        (roll,)
+    )
 
+    data = cursor.fetchone()
     conn.close()
 
     if data:
@@ -133,26 +145,76 @@ def update_student(roll, name):
     conn = connect()
     cursor = conn.cursor()
 
-    cursor.execute("UPDATE students SET name=? WHERE roll=?", (name, roll))
+    cursor.execute(
+        q("UPDATE students SET name=? WHERE roll=?"),
+        (name, roll)
+    )
+
     conn.commit()
-
-    if cursor.rowcount == 0:
-        print("Student not found!")
-    else:
-        print("Student updated!")
-
     conn.close()
+
+
+def get_student_by_roll(roll):
+    conn = connect()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        q("SELECT * FROM students WHERE roll=?"),
+        (roll,)
+    )
+
+    student = cursor.fetchone()
+    conn.close()
+
+    return student
+
+
+def update_student_profile(roll, email, phone, address, dob, course, semester, photo):
+    conn = connect()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        q("""
+            UPDATE students
+            SET email=?, phone=?, address=?, dob=?, course=?, semester=?, photo=?
+            WHERE roll=?
+        """),
+        (email, phone, address, dob, course, semester, photo, roll)
+    )
+
+    conn.commit()
+    conn.close()
+
+
+def add_user(username, password):
+    conn = connect()
+    cursor = conn.cursor()
+
+    hashed_password = generate_password_hash(password)
+
+    try:
+        cursor.execute(
+            q("INSERT INTO users (username, password) VALUES (?, ?)"),
+            (username, hashed_password)
+        )
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        print("Username already exists.", e)
+    finally:
+        conn.close()
+
 
 def verify_user(username, password):
     conn = connect()
     cursor = conn.cursor()
 
     cursor.execute(
-    "SELECT username, password, role FROM users WHERE username=?",
-    (username,)
-)
-    row = cursor.fetchone()
+        q("SELECT username, password, role FROM users WHERE username=?"),
+        (username,)
+    )
 
+    row = cursor.fetchone()
     conn.close()
 
     if row is None:
@@ -164,11 +226,12 @@ def verify_user(username, password):
 
     if check_password_hash(stored_password, password):
         return {
-           "username": db_username,
+            "username": db_username,
             "role": role
         }
 
     return None
+
 
 def get_users():
     conn = connect()
@@ -180,164 +243,93 @@ def get_users():
     conn.close()
     return users
 
+
 def delete_user(user_id):
     conn = connect()
     cursor = conn.cursor()
 
-    cursor.execute("DELETE FROM users WHERE id=?", (user_id,))
-    conn.commit()
+    cursor.execute(
+        q("DELETE FROM users WHERE id=?"),
+        (user_id,)
+    )
 
+    conn.commit()
     conn.close()
+
 
 def update_user_role(user_id, role):
     conn = connect()
     cursor = conn.cursor()
 
     cursor.execute(
-        "UPDATE users SET role=? WHERE id=?",
+        q("UPDATE users SET role=? WHERE id=?"),
         (role, user_id)
     )
 
     conn.commit()
     conn.close()
 
+
 def total_students():
     conn = connect()
     cursor = conn.cursor()
 
     cursor.execute("SELECT COUNT(*) FROM students")
-
     total = cursor.fetchone()[0]
 
     conn.close()
-
     return total
 
+
 def total_users():
-
     conn = connect()
-
     cursor = conn.cursor()
 
     cursor.execute("SELECT COUNT(*) FROM users")
-
     total = cursor.fetchone()[0]
 
     conn.close()
-
     return total
 
+
 def recent_students():
-
     conn = connect()
-
     cursor = conn.cursor()
 
     cursor.execute("""
-
-    SELECT name,roll
-
-    FROM students
-
-    ORDER BY id DESC
-
-    LIMIT 5
-
+        SELECT name, roll
+        FROM students
+        ORDER BY id DESC
+        LIMIT 5
     """)
 
     students = cursor.fetchall()
-
     conn.close()
 
     return students
 
 
-def get_student_by_roll(roll):
-    conn = connect()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT *
-        FROM students
-        WHERE roll=?
-    """, (roll,))
-
-    student = cursor.fetchone()
-
-    conn.close()
-
-    return student
-
-
-def update_student_profile(
-    roll,
-    email,
-    phone,
-    address,
-    dob,
-    course,
-    semester,
-    photo
-):
-
-    conn = connect()
-
-    cursor = conn.cursor()
-
-    cursor.execute("""
-    UPDATE students
-
-    SET
-
-    email=?,
-    phone=?,
-    address=?,
-    dob=?,
-    course=?,
-    semester=?,
-    photo=?
-
-    WHERE roll=?
-
-    """,(
-
-        email,
-        phone,
-        address,
-        dob,
-        course,
-        semester,
-        photo,
-        roll
-
-    ))
-
-    conn.commit()
-
-    conn.close()
-
 def mark_attendance(roll, date, status):
     conn = connect()
     cursor = conn.cursor()
 
-    cursor.execute("""
-        SELECT id FROM attendance
-        WHERE roll=? AND date=?
-    """, (roll, date))
+    cursor.execute(
+        q("SELECT id FROM attendance WHERE roll=? AND date=?"),
+        (roll, date)
+    )
 
     existing = cursor.fetchone()
 
     if existing:
-        cursor.execute("""
-            UPDATE attendance
-            SET status=?
-            WHERE roll=? AND date=?
-        """, (status, roll, date))
+        cursor.execute(
+            q("UPDATE attendance SET status=? WHERE roll=? AND date=?"),
+            (status, roll, date)
+        )
     else:
-        cursor.execute("""
-            INSERT INTO attendance (roll, date, status)
-            VALUES (?, ?, ?)
-        """, (roll, date, status))
+        cursor.execute(
+            q("INSERT INTO attendance (roll, date, status) VALUES (?, ?, ?)"),
+            (roll, date, status)
+        )
 
     conn.commit()
     conn.close()
@@ -356,7 +348,9 @@ def get_attendance():
 
     data = cursor.fetchall()
     conn.close()
+
     return data
+
 
 def attendance_summary():
     conn = connect()
@@ -378,16 +372,20 @@ def attendance_summary():
 
     return summary
 
+
 def add_marks(roll, subject, internal, external):
     total = internal + external
 
     conn = connect()
     cursor = conn.cursor()
 
-    cursor.execute("""
-        INSERT INTO marks (roll, subject, internal, external, total)
-        VALUES (?, ?, ?, ?, ?)
-    """, (roll, subject, internal, external, total))
+    cursor.execute(
+        q("""
+            INSERT INTO marks (roll, subject, internal, external, total)
+            VALUES (?, ?, ?, ?, ?)
+        """),
+        (roll, subject, internal, external, total)
+    )
 
     conn.commit()
     conn.close()
@@ -407,7 +405,9 @@ def get_marks():
 
     data = cursor.fetchall()
     conn.close()
+
     return data
+
 
 def marks_summary():
     conn = connect()
@@ -424,16 +424,20 @@ def marks_summary():
         "average": round(row[2] or 0, 2)
     }
 
+
 def add_fee(roll, total_fee, paid_amount, payment_date):
     pending_amount = total_fee - paid_amount
 
     conn = connect()
     cursor = conn.cursor()
 
-    cursor.execute("""
-        INSERT INTO fees (roll, total_fee, paid_amount, pending_amount, payment_date)
-        VALUES (?, ?, ?, ?, ?)
-    """, (roll, total_fee, paid_amount, pending_amount, payment_date))
+    cursor.execute(
+        q("""
+            INSERT INTO fees (roll, total_fee, paid_amount, pending_amount, payment_date)
+            VALUES (?, ?, ?, ?, ?)
+        """),
+        (roll, total_fee, paid_amount, pending_amount, payment_date)
+    )
 
     conn.commit()
     conn.close()
@@ -453,7 +457,9 @@ def get_fees():
 
     data = cursor.fetchall()
     conn.close()
+
     return data
+
 
 def fees_summary():
     conn = connect()
