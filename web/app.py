@@ -25,8 +25,7 @@ from app.database_sqlite import (
     add_fee,
     get_fees,
     fees_summary,
-    get_student_by_roll,
-    reset_admin_password
+    admin_exists
 )
 from web.auth import (
     login_user,
@@ -55,13 +54,7 @@ API_KEY = "student-erp-secret-key"
 
 init_db()
 
-reset_admin_password()
-
-try:
-    add_user("admin", "admin123")
-    print("Admin created")
-except Exception:
-    print("Admin already exists")
+#reset_admin_password()
 
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -74,9 +67,36 @@ def api_key_required():
 
     return True
 
+@app.route("/setup-admin", methods=["GET", "POST"])
+def setup_admin():
+
+    if admin_exists():
+        return redirect("/login")
+
+    if request.method == "POST":
+        username = request.form["username"]
+        password = request.form["password"]
+
+        add_user(username, password)
+
+        users = get_users()
+
+        for user in users:
+            if user[1] == username:
+                update_user_role(user[0], "admin")
+                break
+
+        return redirect("/login")
+
+    return render_template("setup_admin.html")
+
 # 🔐 LOGIN PAGE
 @app.route("/login", methods=["GET", "POST"])
 def login():
+
+    if not admin_exists():
+        return redirect("/setup-admin")
+
     if request.method == "POST":
         username = request.form["username"]
         password = request.form["password"]
@@ -896,7 +916,37 @@ def api_delete_student(roll):
         "roll": roll
     })
 
+@app.route("/student/profile/update/<int:roll>", methods=["POST"])
+def update_profile_details(roll):
+    if not is_logged_in():
+        return redirect("/login")
 
+    student = get_student_by_roll(roll)
+
+    if student is None:
+        return "Student Not Found", 404
+
+    email = request.form["email"]
+    phone = request.form["phone"]
+    address = request.form["address"]
+    dob = request.form["dob"]
+    course = request.form["course"]
+    semester = request.form["semester"]
+
+    photo = student[9]
+
+    update_student_profile(
+        roll,
+        email,
+        phone,
+        address,
+        dob,
+        course,
+        semester,
+        photo
+    )
+
+    return redirect(f"/student/{roll}")
 
 if __name__ == "__main__":
     app.run(debug=True)

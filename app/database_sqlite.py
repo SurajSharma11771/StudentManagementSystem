@@ -496,3 +496,18 @@ def reset_admin_password():
     conn.close()
 
     print("Admin password reset successfully")
+
+def admin_exists():
+    conn = connect()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        q("SELECT id FROM users WHERE role=? LIMIT 1"),
+        ("admin",)
+    )
+
+    admin = cursor.fetchone()
+
+    conn.close()
+
+    return admin is not None
