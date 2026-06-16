@@ -54,6 +54,12 @@ API_KEY = "student-erp-secret-key"
 
 init_db()
 
+try:
+    add_user("admin", "admin123")
+    print("Admin created")
+except Exception:
+    print("Admin already exists")
+
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
