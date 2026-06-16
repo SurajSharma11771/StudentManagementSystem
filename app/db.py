@@ -10,6 +10,8 @@ except ImportError:
 DATABASE_URL = os.environ.get("DATABASE_URL")
 SQLITE_PATH = "data/students.db"
 
+print("DATABASE_URL exists:", bool(DATABASE_URL))
+print("Using PostgreSQL:", bool(DATABASE_URL))
 
 def is_postgres():
     return bool(DATABASE_URL)
