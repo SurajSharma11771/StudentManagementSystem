@@ -475,3 +475,24 @@ def fees_summary():
         "paid": row[1] or 0,
         "pending": row[2] or 0
     }
+
+def reset_admin_password():
+    conn = connect()
+    cursor = conn.cursor()
+
+    hashed_password = generate_password_hash("admin123")
+
+    cursor.execute(
+        q("""
+            INSERT INTO users (username, password, role)
+            VALUES (?, ?, ?)
+            ON CONFLICT (username)
+            DO UPDATE SET password = EXCLUDED.password, role = EXCLUDED.role
+        """),
+        ("admin", hashed_password, "admin")
+    )
+
+    conn.commit()
+    conn.close()
+
+    print("Admin password reset successfully")

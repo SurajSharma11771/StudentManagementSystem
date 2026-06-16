@@ -25,7 +25,8 @@ from app.database_sqlite import (
     add_fee,
     get_fees,
     fees_summary,
-    get_student_by_roll
+    get_student_by_roll,
+    reset_admin_password
 )
 from web.auth import (
     login_user,
@@ -53,6 +54,8 @@ app.secret_key = "mysecretkey"
 API_KEY = "student-erp-secret-key"
 
 init_db()
+
+reset_admin_password()
 
 try:
     add_user("admin", "admin123")
