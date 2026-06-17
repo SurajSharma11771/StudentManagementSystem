@@ -9,6 +9,7 @@ def login_user(username, password):
     if user:
         session["user"] = user["username"]
         session["role"] = user["role"]
+        session["organization_id"] = user["organization_id"]
         return True
 
     return False
@@ -21,6 +22,6 @@ def is_logged_in():
 def logout_user():
     session.pop("user", None)
     session.pop("role", None)
-    
+    session.pop("organization_id", None)
 def is_admin():
     return session.get("role") == "admin"

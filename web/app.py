@@ -25,8 +25,12 @@ from app.database_sqlite import (
     add_fee,
     get_fees,
     fees_summary,
-    admin_exists
+    admin_exists,
+    create_organization,
+    organization_exists,
+    dashboard_summary
 )
+
 from web.auth import (
     login_user,
     is_logged_in,
@@ -70,16 +74,19 @@ def api_key_required():
 @app.route("/setup-admin", methods=["GET", "POST"])
 def setup_admin():
 
-    if admin_exists():
+    if organization_exists():
         return redirect("/login")
 
     if request.method == "POST":
+        org_name = request.form["org_name"]
         username = request.form["username"]
         password = request.form["password"]
 
-        add_user(username, password)
+        org_id = create_organization(org_name)
 
-        users = get_users()
+        add_user(username, password, org_id)
+
+        users = get_users(org_id)
 
         for user in users:
             if user[1] == username:
@@ -94,7 +101,7 @@ def setup_admin():
 @app.route("/login", methods=["GET", "POST"])
 def login():
 
-    if not admin_exists():
+    if not organization_exists():
         return redirect("/setup-admin")
 
     if request.method == "POST":
@@ -121,27 +128,24 @@ def logout():
 def home():
     if not is_logged_in():
         return redirect("/login")
+    
+    org_id = session.get("organization_id")
+    dashboard = dashboard_summary(org_id)
 
-    students = get_students()
-    student_count = total_students()
+    students = get_students(org_id)
+    student_count = total_students(org_id)
     user_count = total_users()
-    recent = recent_students()
+    recent = recent_students(org_id)
+
     return render_template(
-
-    "index.html",
-
-    students=students,
-
-    total=len(students),
-
-    query="",
-
-    student_count=student_count,
-
-    user_count=user_count,
-
-    recent=recent
-
+        "index.html",
+        students=students,
+        total=len(students),
+        query="",
+        student_count=student_count,
+        user_count=user_count,
+        recent=recent,
+        dashboard=dashboard
     )
 
 @app.route("/add", methods=["POST"])
@@ -151,7 +155,11 @@ def add():
 
     name = request.form["name"]
     roll = int(request.form["roll"])
-    add_student(name, roll)
+    add_student(
+    name,
+    roll,
+    session.get("organization_id")
+)
     return redirect("/")
 
 
@@ -161,10 +169,13 @@ def delete(roll):
     if not is_logged_in():
         return redirect("/login")
 
-    if not is_admin():
-        return "⛔ Access Denied", 403
+    #if not is_admin():
+    #    return "⛔ Access Denied", 403
 
-    delete_student(roll)
+    delete_student(
+    roll,
+    session.get("organization_id")
+)
     return redirect("/")
 
 
@@ -180,7 +191,11 @@ def update():
 
     name = request.form["name"]
 
-    update_student(int(roll), name)
+    update_student(
+    int(roll),
+    name,
+    session.get("organization_id")
+)
 
     return redirect("/")
 
@@ -191,7 +206,7 @@ def search():
 
     query = request.args.get("q", "")
 
-    students = get_students()
+    students = get_students(session.get("organization_id"))
 
     # 🔍 filter logic
     filtered = [
@@ -206,9 +221,12 @@ def attendance_page():
     if not is_logged_in():
         return redirect("/login")
 
-    students = get_students()
-    attendance = get_attendance()
-    summary = attendance_summary()
+    org_id = session.get("organization_id")
+    print("ATTENDANCE PAGE ORG ID:", org_id)
+
+    students = get_students(org_id)
+    attendance = get_attendance(org_id)
+    summary = attendance_summary(org_id)
 
     return render_template(
         "attendance.html",
@@ -217,14 +235,30 @@ def attendance_page():
         summary=summary
     )
 
+@app.route("/attendance/mark", methods=["POST"])
+def attendance_mark():
+    if not is_logged_in():
+        return redirect("/login")
+
+    roll = int(request.form["roll"])
+    date = request.form["date"]
+    status = request.form["status"]
+    org_id = session.get("organization_id")
+    print("ATTENDANCE SAVE:", roll, date, status, org_id)
+    mark_attendance(roll, date, status, org_id)
+
+    return redirect("/attendance")
+
 @app.route("/marks")
 def marks_page():
     if not is_logged_in():
         return redirect("/login")
 
-    students = get_students()
-    marks = get_marks()
-    summary = marks_summary()
+    org_id = session.get("organization_id")
+
+    students = get_students(org_id)
+    marks = get_marks(org_id)
+    summary = marks_summary(org_id)
 
     return render_template(
         "marks.html",
@@ -238,9 +272,11 @@ def fees_page():
     if not is_logged_in():
         return redirect("/login")
 
-    students = get_students()
-    fees = get_fees()
-    summary = fees_summary()
+    org_id = session.get("organization_id")
+
+    students = get_students(org_id)
+    fees = get_fees(org_id)
+    summary = fees_summary(org_id)
 
     return render_template(
         "fees.html",
@@ -260,7 +296,13 @@ def fees_add():
     paid_amount = int(request.form["paid_amount"])
     payment_date = request.form["payment_date"]
 
-    add_fee(roll, total_fee, paid_amount, payment_date)
+    add_fee(
+    roll,
+    total_fee,
+    paid_amount,
+    payment_date,
+    session.get("organization_id")
+)
 
     return redirect("/fees")
 
@@ -274,23 +316,18 @@ def marks_add():
     internal = int(request.form["internal"])
     external = int(request.form["external"])
 
-    add_marks(roll, subject, internal, external)
+    add_marks(
+    roll,
+    subject,
+    internal,
+    external,
+    session.get("organization_id")
+)
 
     return redirect("/marks")
 
 
-@app.route("/attendance/mark", methods=["POST"])
-def attendance_mark():
-    if not is_logged_in():
-        return redirect("/login")
 
-    roll = int(request.form["roll"])
-    date = request.form["date"]
-    status = request.form["status"]
-
-    mark_attendance(roll, date, status)
-
-    return redirect("/attendance")
 
 @app.route("/student/<int:roll>")
 def student_profile(roll):
@@ -298,7 +335,7 @@ def student_profile(roll):
     if not is_logged_in():
         return redirect("/login")
 
-    student = get_student_by_roll(roll)
+    student = get_student_by_roll(roll, session.get("organization_id"))
 
     if student is None:
         return "Student Not Found", 404
@@ -313,7 +350,7 @@ def upload_student_photo(roll):
     if not is_logged_in():
         return redirect("/login")
 
-    student = get_student_by_roll(roll)
+    student = get_student_by_roll(roll, session.get("organization_id"))
 
     if student is None:
         return "Student Not Found", 404
@@ -358,7 +395,7 @@ def users():
     if not is_admin():
         return "Access Denied", 403
 
-    users = get_users()
+    users = get_users(session.get("organization_id"))
 
     return render_template("users.html", users=users)
 
@@ -375,11 +412,14 @@ def add_new_user():
     password = request.form["password"]
     role = request.form["role"]
 
-    add_user(username, password)
+    add_user(
+    username,
+    password,
+    session.get("organization_id")
+)
 
     # Role update
-    users = get_users()
-
+    users = get_users(session.get("organization_id"))
     for user in users:
         if user[1] == username:
             update_user_role(user[0], role)
@@ -405,7 +445,8 @@ def student_report_pdf():
     if not is_logged_in():
         return redirect("/login")
 
-    students = get_students()
+    org_id = session.get("organization_id")
+    students = get_students(org_id)
 
     buffer = BytesIO()
 
@@ -421,7 +462,7 @@ def student_report_pdf():
     ]]
 
     for s in students:
-        student = get_student_by_roll(s[1])
+        student = get_student_by_roll(s[1], org_id)
 
         if student is None:
             continue
@@ -463,7 +504,8 @@ def student_report_excel():
     if not is_logged_in():
         return redirect("/login")
 
-    students = get_students()
+    org_id = session.get("organization_id")
+    students = get_students(org_id)
 
     wb = Workbook()
     ws = wb.active
@@ -472,7 +514,7 @@ def student_report_excel():
     ws.append(["Name", "Roll", "Email", "Phone", "Course", "Semester"])
 
     for s in students:
-        student = get_student_by_roll(s[1])
+        student = get_student_by_roll(s[1], org_id)
 
         if student is None:
             continue
@@ -502,7 +544,9 @@ def attendance_report_pdf():
     if not is_logged_in():
         return redirect("/login")
 
-    attendance = get_attendance()
+    attendance = get_attendance(
+    session.get("organization_id")
+)
 
     buffer = BytesIO()
 
@@ -556,7 +600,9 @@ def attendance_report_excel():
     if not is_logged_in():
         return redirect("/login")
 
-    attendance = get_attendance()
+    attendance = get_attendance(
+    session.get("organization_id")
+)
 
     wb = Workbook()
     ws = wb.active
@@ -588,7 +634,9 @@ def marks_report_pdf():
     if not is_logged_in():
         return redirect("/login")
 
-    marks = get_marks()
+    marks = get_marks(
+    session.get("organization_id")
+)
 
     buffer = BytesIO()
 
@@ -646,7 +694,9 @@ def marks_report_excel():
     if not is_logged_in():
         return redirect("/login")
 
-    marks = get_marks()
+    marks = get_marks(
+    session.get("organization_id")
+)
 
     wb = Workbook()
     ws = wb.active
@@ -680,7 +730,9 @@ def fees_report_pdf():
     if not is_logged_in():
         return redirect("/login")
 
-    fees = get_fees()
+    fees = get_fees(
+    session.get("organization_id")
+)
 
     buffer = BytesIO()
 
@@ -737,7 +789,9 @@ def fees_report_excel():
     if not is_logged_in():
         return redirect("/login")
 
-    fees = get_fees()
+    fees = get_fees(
+    session.get("organization_id")
+)
 
     wb = Workbook()
     ws = wb.active
@@ -771,12 +825,13 @@ def api_students():
     if not is_logged_in():
         return jsonify({"error": "Unauthorized"}), 401
 
-    students = get_students()
+    org_id = session.get("organization_id")
+    students = get_students(org_id)
 
     data = []
 
     for s in students:
-        student = get_student_by_roll(s[1])
+        student = get_student_by_roll(s[1], org_id)
 
         if student is None:
             continue
@@ -803,7 +858,8 @@ def api_attendance():
     if not is_logged_in():
         return jsonify({"error": "Unauthorized"}), 401
 
-    attendance = get_attendance()
+    org_id = session.get("organization_id")
+    attendance = get_attendance(org_id)
 
     data = []
 
@@ -823,7 +879,8 @@ def api_marks():
     if not is_logged_in():
         return jsonify({"error": "Unauthorized"}), 401
 
-    marks = get_marks()
+    org_id = session.get("organization_id")
+    marks = get_marks(org_id)
 
     data = []
 
@@ -845,7 +902,8 @@ def api_fees():
     if not is_logged_in():
         return jsonify({"error": "Unauthorized"}), 401
 
-    fees = get_fees()
+    org_id = session.get("organization_id")
+    fees = get_fees(org_id)
 
     data = []
 
@@ -878,7 +936,11 @@ def api_add_student():
     if not name or not roll:
         return jsonify({"error": "Name and roll are required"}), 400
 
-    add_student(name, int(roll))
+    add_student(
+    name,
+    int(roll),
+    session.get("organization_id")
+)
 
     return jsonify({
         "message": "Student added successfully",
@@ -898,7 +960,11 @@ def api_update_student(roll):
     if not name:
         return jsonify({"error": "Name is required"}), 400
 
-    update_student(roll, name)
+    update_student(
+    roll,
+    name,
+    session.get("organization_id")
+)
 
     return jsonify({
         "message": "Student updated successfully",
@@ -908,9 +974,15 @@ def api_update_student(roll):
 
 @app.route("/api/students/<int:roll>", methods=["DELETE"])
 def api_delete_student(roll):
-    delete_student(roll)
+    
     if not api_key_required():
         return jsonify({"error": "Invalid or missing API key"}), 401
+
+    delete_student(
+        roll,
+        session.get("organization_id")
+    )
+
     return jsonify({
         "message": "Student deleted successfully",
         "roll": roll
@@ -921,7 +993,7 @@ def update_profile_details(roll):
     if not is_logged_in():
         return redirect("/login")
 
-    student = get_student_by_roll(roll)
+    student = get_student_by_roll(roll, session.get("organization_id"))
 
     if student is None:
         return "Student Not Found", 404
@@ -950,7 +1022,4 @@ def update_profile_details(roll):
 
 if __name__ == "__main__":
     app.run(debug=True)
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
-
+    

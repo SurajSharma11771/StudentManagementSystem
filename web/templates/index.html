@@ -5,31 +5,22 @@
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
-        body {
-            background: #f4f6f9;
-        }
-
-        .card {
-            border-radius: 12px;
-        }
-
-        .btn {
-            border-radius: 8px;
-        }
-
-        .table thead {
-            background: #343a40;
-            color: white;
-        }
+        body { background: #f4f6f9; }
+        .card { border-radius: 12px; }
+        .btn { border-radius: 8px; }
+        .table thead { background: #343a40; color: white; }
+        .chart-box { height: 220px; position: relative; }
+        .chart-box canvas { width: 100% !important; height: 100% !important; }
     </style>
-
+    
 </head>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <body>
 
-<!-- NAVBAR -->
+
 <nav class="navbar navbar-dark bg-dark px-3 shadow">
     <span class="navbar-brand fw-bold">🎓 Student Management System</span>
     <a href="/logout" class="btn btn-danger btn-sm">Logout</a>
@@ -37,70 +28,59 @@
 
 <div class="container mt-4">
 
-    <!-- STATS -->
-<div class="row mb-4">
+    <div class="row mb-4">
 
-    <div class="col-md-3">
-        <div class="card shadow bg-primary text-white">
-            <div class="card-body">
-                <h6>Total Students</h6>
-                <h2>{{ student_count }}</h2>
+        <div class="col-md-3">
+            <div class="card shadow bg-primary text-white">
+                <div class="card-body">
+                    <h6>Total Students</h6>
+                    <h2>{{ student_count }}</h2>
+                </div>
             </div>
         </div>
-    </div>
 
-    <div class="col-md-3">
-        <div class="card shadow bg-success text-white">
-            <div class="card-body">
-                <h6>Total Users</h6>
-                <h2>{{ user_count }}</h2>
+        <div class="col-md-3">
+            <div class="card shadow bg-success text-white">
+                <div class="card-body">
+                    <h6>Total Users</h6>
+                    <h2>{{ user_count }}</h2>
+                </div>
             </div>
         </div>
-    </div>
 
-    <div class="col-md-3">
-        <div class="card shadow bg-warning text-dark">
-            <div class="card-body">
-                <h6>Your Role</h6>
-                <h4>{{ session.get("role")|title }}</h4>
+        <div class="col-md-3">
+            <div class="card shadow bg-warning text-dark">
+                <div class="card-body">
+                    <h6>Your Role</h6>
+                    <h4>{{ session.get("role")|title }}</h4>
+                </div>
             </div>
         </div>
-    </div>
 
-    <div class="col-md-3">
-        <div class="card shadow bg-dark text-white">
-            <div class="card-body">
-                <h6>Logged In</h6>
-                <h5>{{ session.get("user") }}</h5>
+        <div class="col-md-3">
+            <div class="card shadow bg-dark text-white">
+                <div class="card-body">
+                    <h6>Logged In</h6>
+                    <h5>{{ session.get("user") }}</h5>
+                </div>
             </div>
         </div>
+
     </div>
 
-</div>
-
-<div class="card shadow-sm p-3 mb-3">
-
-    <h5>🆕 Recent Students</h5>
-
-    <ul class="list-group">
-
-        {% for s in recent %}
-
-        <li class="list-group-item">
-
-            {{ s[0] }} (Roll {{ s[1] }})
-
-        </li>
-
-        {% endfor %}
-
-    </ul>
-
-</div>
-
-    <!-- ADD STUDENT -->
     <div class="card shadow-sm p-3 mb-3">
+        <h5>🆕 Recent Students</h5>
 
+        <ul class="list-group">
+            {% for s in recent %}
+            <li class="list-group-item">
+                {{ s[0] }} (Roll {{ s[1] }})
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <div class="card shadow-sm p-3 mb-3">
         <h5 class="mb-3">➕ Add Student</h5>
 
         <form action="/add" method="post" class="row g-2">
@@ -112,7 +92,7 @@
             <div class="col-md-4">
                 <input type="number" name="roll" class="form-control" placeholder="Roll Number" required>
             </div>
-                
+
             <div class="col-md-3">
                 <button class="btn btn-success w-100">Add</button>
             </div>
@@ -120,13 +100,11 @@
         </form>
     </div>
 
-    <!-- SEARCH -->
     <div class="card shadow-sm p-3 mb-3">
-
         <form action="/search" method="get" class="row g-2">
 
             <div class="col-md-9">
-                <input type="text" name="q" class="form-control" placeholder="Search student...">
+                <input type="text" name="q" class="form-control" placeholder="Search student..." value="{{ query }}">
             </div>
 
             <div class="col-md-3">
@@ -134,79 +112,69 @@
             </div>
 
         </form>
-
     </div>
-                <div class="mb-3">
-                <a href="/users" class="btn btn-dark">
-                👥 Manage Users
-                </a>
-
-                <a href="/attendance" class="btn btn-dark">
-                📅 Attendance
-                </a>
-
-                <a href="/marks" class="btn btn-dark">
-                📝 Marks
-                </a>
-
-                <a href="/fees" class="btn btn-dark">
-                💰 Fees
-                </a>
-                <div class="mb-3">
-                <a href="/reports/students/pdf"
-                class="btn btn-dark">
-                📄 Student PDF
-                </a>
-                <a href="/reports/students/excel" class="btn btn-dark">
-                📊 Student Excel
-                </a>
-                <div class="mb-3">
-                <a href="/reports/attendance/pdf" class="btn btn-dark">
-                📄 Attendance PDF
-                </a>
-
-                <a href="/reports/attendance/excel" class="btn btn-dark">
-                📊 Attendance Excel
-                </a>
-                <div class="mb-3">
-                    <a href="/reports/marks/pdf" class="btn btn-dark">
-                📄 Marks PDF
-                </a>
-
-                <a href="/reports/marks/excel" class="btn btn-dark">
-                📊 Marks Excel
-                </a>
-
-                <div class="mb-3">
-                <a href="/reports/fees/pdf" class="btn btn-dark">
-                📄 Fees PDF
-                </a>
-
-                <a href="/reports/fees/excel" class="btn btn-dark">
-                📊 Fees Excel
-                </a>
-</div>
-
-</div>
-
-
-
-</div>
 
     <div class="card shadow-sm p-3 mb-3">
+        <h5 class="mb-3">⚡ Quick Actions</h5>
 
-    <h5>📈 Dashboard Analytics</h5>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="/users" class="btn btn-dark">👥 Manage Users</a>
+            <a href="/attendance" class="btn btn-dark">📅 Attendance</a>
+            <a href="/marks" class="btn btn-dark">📝 Marks</a>
+            <a href="/fees" class="btn btn-dark">💰 Fees</a>
+        </div>
+    </div>
 
-    <canvas id="studentChart" height="100"></canvas>
+    <div class="card shadow-sm p-3 mb-3">
+        <h5 class="mb-3">📄 Reports</h5>
 
-</div>
-     <!-- TABLE -->
+        <div class="d-flex flex-wrap gap-2">
+            <a href="/reports/students/pdf" class="btn btn-danger">Student PDF</a>
+            <a href="/reports/students/excel" class="btn btn-success">Student Excel</a>
+            <a href="/reports/attendance/pdf" class="btn btn-danger">Attendance PDF</a>
+            <a href="/reports/attendance/excel" class="btn btn-success">Attendance Excel</a>
+            <a href="/reports/marks/pdf" class="btn btn-danger">Marks PDF</a>
+            <a href="/reports/marks/excel" class="btn btn-success">Marks Excel</a>
+            <a href="/reports/fees/pdf" class="btn btn-danger">Fees PDF</a>
+            <a href="/reports/fees/excel" class="btn btn-success">Fees Excel</a>
+        </div>
+    </div>
+
+    <div class="row mb-3">
+
+        <div class="col-md-4">
+            <div class="card shadow-sm p-3">
+                <h5>📊 System Overview</h5>
+                <div class="chart-box">
+                    <canvas id="studentChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card shadow-sm p-3">
+                <h5>📅 Attendance</h5>
+                <div class="chart-box">
+                    <canvas id="attendanceChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card shadow-sm p-3">
+                <h5>💰 Fees</h5>
+                <div class="chart-box">
+                    <canvas id="feesChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
     <div class="card shadow-sm p-3">
-
         <h5 class="mb-3">📋 Student List</h5>
 
         <table class="table table-hover align-middle">
-
             <thead>
                 <tr>
                     <th>Name</th>
@@ -222,11 +190,10 @@
                     <td>{{ s[1] }}</td>
 
                     <td>
-                        <a href="/student/{{ s[1] }}"
-                            class="btn btn-info btn-sm">
+                        <a href="/student/{{ s[1] }}" class="btn btn-info btn-sm">
                             Profile
-                        </a>    
-                        <!-- EDIT -->
+                        </a>
+
                         <button class="btn btn-warning btn-sm"
                             data-bs-toggle="modal"
                             data-bs-target="#editModal"
@@ -235,75 +202,103 @@
                         </button>
 
                         {% if session.get("role") == "admin" %}
-
                         <a href="/delete/{{ s[1] }}" class="btn btn-danger btn-sm">
                             Delete
                         </a>
-
                         {% endif %}
-
                     </td>
                 </tr>
                 {% endfor %}
             </tbody>
 
         </table>
-
     </div>
 
 </div>
 
-<!-- EDIT MODAL -->
 <div class="modal fade" id="editModal">
+    <div class="modal-dialog">
+        <div class="modal-content">
 
-  <div class="modal-dialog">
+            <form action="/update" method="post">
 
-    <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Student</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
 
-      <form action="/update" method="post">
+                <div class="modal-body">
+                    <input type="hidden" name="roll" id="editRoll">
 
-        <div class="modal-header">
-          <h5 class="modal-title">Edit Student</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <label class="form-label">Name</label>
+                    <input type="text" name="name" id="editName" class="form-control" required>
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn btn-primary w-100">Update</button>
+                </div>
+
+            </form>
+
         </div>
-
-        <div class="modal-body">
-
-          <input type="hidden" name="roll" id="editRoll">
-
-          <label class="form-label">Name</label>
-          <input type="text" name="name" id="editName" class="form-control" required>
-
-        </div>
-
-        <div class="modal-footer">
-          <button class="btn btn-primary w-100">Update</button>
-        </div>
-
-      </form>
-
     </div>
-
-  </div>
-
 </div>
 
 <script>
 const studentCount = Number("{{ student_count }}");
 const userCount = Number("{{ user_count }}");
 
-const ctx = document.getElementById('studentChart');
+const presentCount = Number("{{ dashboard['attendance']['Present'] }}");
+const absentCount = Number("{{ dashboard['attendance']['Absent'] }}");
+const leaveCount = Number("{{ dashboard['attendance']['Leave'] }}");
 
-new Chart(ctx, {
-    type: 'bar',
+const paidFees = Number("{{ dashboard['fees']['paid'] }}");
+const pendingFees = Number("{{ dashboard['fees']['pending'] }}");
+
+new Chart(document.getElementById("studentChart"), {
+    type: "bar",
     data: {
-        labels: ['Students', 'Users'],
+        labels: ["Students", "Users"],
         datasets: [{
-            label: 'System Overview',
+            label: "System Overview",
             data: [studentCount, userCount]
         }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false
     }
 });
+
+new Chart(document.getElementById("attendanceChart"), {
+    type: "pie",
+    data: {
+        labels: ["Present", "Absent", "Leave"],
+        datasets: [{
+            data: [presentCount, absentCount, leaveCount]
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false
+    }
+});
+
+new Chart(document.getElementById("feesChart"), {
+    type: "bar",
+    data: {
+        labels: ["Paid", "Pending"],
+        datasets: [{
+            label: "Fees",
+            data: [paidFees, pendingFees]
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false
+    }
+});
+
 function setEditData(roll, name) {
     document.getElementById("editRoll").value = roll;
     document.getElementById("editName").value = name;

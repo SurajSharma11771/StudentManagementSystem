@@ -9,6 +9,36 @@ def q(sql):
         return sql.replace("?", "%s")
     return sql
 
+def ensure_org_columns():
+    conn = connect()
+    cursor = conn.cursor()
+
+    tables = ["students", "users", "attendance", "marks", "fees"]
+
+    for table in tables:
+        try:
+            cursor.execute(f"ALTER TABLE {table} ADD COLUMN organization_id INTEGER")
+        except Exception:
+            pass
+
+    cursor.execute("SELECT id FROM organizations LIMIT 1")
+    org = cursor.fetchone()
+
+    if org:
+        org_id = org[0]
+
+        for table in tables:
+            try:
+                cursor.execute(
+                    q(f"UPDATE {table} SET organization_id=? WHERE organization_id IS NULL"),
+                    (org_id,)
+                )
+            except Exception:
+                pass
+
+    conn.commit()
+    conn.close()
+
 
 def init_db():
     os.makedirs("data", exist_ok=True)
@@ -22,10 +52,18 @@ def init_db():
         id_type = "INTEGER PRIMARY KEY AUTOINCREMENT"
 
     cursor.execute(f"""
+        CREATE TABLE IF NOT EXISTS organizations (
+            id {id_type},
+            name TEXT UNIQUE NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    cursor.execute(f"""
         CREATE TABLE IF NOT EXISTS students (
             id {id_type},
             name TEXT NOT NULL,
-            roll INTEGER UNIQUE NOT NULL,
+            roll INTEGER NOT NULL,
             email TEXT,
             phone TEXT,
             address TEXT,
@@ -33,7 +71,9 @@ def init_db():
             course TEXT,
             semester TEXT,
             photo TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            organization_id INTEGER,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(roll, organization_id)
         )
     """)
 
@@ -42,7 +82,8 @@ def init_db():
             id {id_type},
             username TEXT UNIQUE NOT NULL,
             password TEXT NOT NULL,
-            role TEXT DEFAULT 'staff'
+            role TEXT DEFAULT 'staff',
+            organization_id INTEGER
         )
     """)
 
@@ -51,7 +92,8 @@ def init_db():
             id {id_type},
             roll INTEGER NOT NULL,
             date TEXT NOT NULL,
-            status TEXT NOT NULL
+            status TEXT NOT NULL,
+            organization_id INTEGER
         )
     """)
 
@@ -62,7 +104,8 @@ def init_db():
             subject TEXT NOT NULL,
             internal INTEGER NOT NULL,
             external INTEGER NOT NULL,
-            total INTEGER NOT NULL
+            total INTEGER NOT NULL,
+            organization_id INTEGER
         )
     """)
 
@@ -73,22 +116,25 @@ def init_db():
             total_fee INTEGER NOT NULL,
             paid_amount INTEGER NOT NULL,
             pending_amount INTEGER NOT NULL,
-            payment_date TEXT NOT NULL
+            payment_date TEXT NOT NULL,
+            organization_id INTEGER
         )
     """)
 
     conn.commit()
     conn.close()
 
+    ensure_org_columns()
 
-def add_student(name, roll):
+
+def add_student(name, roll, organization_id=None):
     conn = connect()
     cursor = conn.cursor()
 
     try:
         cursor.execute(
-            q("INSERT INTO students (name, roll) VALUES (?, ?)"),
-            (name, roll)
+            q("INSERT INTO students (name, roll, organization_id) VALUES (?, ?, ?)"),
+            (name, roll, organization_id)
         )
         conn.commit()
         print("Student added successfully!")
@@ -99,24 +145,47 @@ def add_student(name, roll):
         conn.close()
 
 
-def get_students():
+def get_students(organization_id=None):
     conn = connect()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT name, roll FROM students")
-    data = cursor.fetchall()
+    if organization_id:
+        cursor.execute(
+            q("SELECT name, roll FROM students WHERE organization_id=?"),
+            (organization_id,)
+        )
+    else:
+        cursor.execute("SELECT name, roll FROM students")
 
+
+    data = cursor.fetchall()
+    
     conn.close()
     return data
 
 
-def delete_student(roll):
+def delete_student(roll, organization_id):
     conn = connect()
     cursor = conn.cursor()
 
     cursor.execute(
-        q("DELETE FROM students WHERE roll=?"),
-        (roll,)
+        q("DELETE FROM attendance WHERE roll=? AND organization_id=?"),
+        (roll, organization_id)
+    )
+
+    cursor.execute(
+        q("DELETE FROM marks WHERE roll=? AND organization_id=?"),
+        (roll, organization_id)
+    )
+
+    cursor.execute(
+        q("DELETE FROM fees WHERE roll=? AND organization_id=?"),
+        (roll, organization_id)
+    )
+
+    cursor.execute(
+        q("DELETE FROM students WHERE roll=? AND organization_id=?"),
+        (roll, organization_id)
     )
 
     conn.commit()
@@ -141,27 +210,37 @@ def search_student(roll):
         print("Student not found!")
 
 
-def update_student(roll, name):
+def update_student(roll, name, organization_id):
     conn = connect()
     cursor = conn.cursor()
 
     cursor.execute(
-        q("UPDATE students SET name=? WHERE roll=?"),
-        (name, roll)
+        q("""
+            UPDATE students
+            SET name=?
+            WHERE roll=? AND organization_id=?
+        """),
+        (name, roll, organization_id)
     )
 
     conn.commit()
     conn.close()
 
 
-def get_student_by_roll(roll):
+def get_student_by_roll(roll, organization_id=None):
     conn = connect()
     cursor = conn.cursor()
 
-    cursor.execute(
-        q("SELECT * FROM students WHERE roll=?"),
-        (roll,)
-    )
+    if organization_id:
+        cursor.execute(
+            q("SELECT * FROM students WHERE roll=? AND organization_id=?"),
+            (roll, organization_id)
+        )
+    else:
+        cursor.execute(
+            q("SELECT * FROM students WHERE roll=?"),
+            (roll,)
+        )
 
     student = cursor.fetchone()
     conn.close()
@@ -186,7 +265,7 @@ def update_student_profile(roll, email, phone, address, dob, course, semester, p
     conn.close()
 
 
-def add_user(username, password):
+def add_user(username, password, organization_id=None):
     conn = connect()
     cursor = conn.cursor()
 
@@ -194,13 +273,19 @@ def add_user(username, password):
 
     try:
         cursor.execute(
-            q("INSERT INTO users (username, password) VALUES (?, ?)"),
-            (username, hashed_password)
+            q("""
+                INSERT INTO users (username, password, organization_id)
+                VALUES (?, ?, ?)
+            """),
+            (username, hashed_password, organization_id)
         )
+
         conn.commit()
+
     except Exception as e:
         conn.rollback()
         print("Username already exists.", e)
+
     finally:
         conn.close()
 
@@ -210,7 +295,7 @@ def verify_user(username, password):
     cursor = conn.cursor()
 
     cursor.execute(
-        q("SELECT username, password, role FROM users WHERE username=?"),
+        q("SELECT username, password, role, organization_id FROM users WHERE username=?"),
         (username,)
     )
 
@@ -223,21 +308,30 @@ def verify_user(username, password):
     db_username = row[0]
     stored_password = row[1]
     role = row[2]
+    organization_id = row[3]
 
     if check_password_hash(stored_password, password):
         return {
             "username": db_username,
-            "role": role
+            "role": role,
+            "organization_id": organization_id
         }
 
     return None
 
 
-def get_users():
+def get_users(organization_id=None):
     conn = connect()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT id, username, role FROM users")
+    if organization_id:
+        cursor.execute(
+            q("SELECT id, username, role FROM users WHERE organization_id=?"),
+            (organization_id,)
+        )
+    else:
+        cursor.execute("SELECT id, username, role FROM users")
+
     users = cursor.fetchall()
 
     conn.close()
@@ -270,11 +364,18 @@ def update_user_role(user_id, role):
     conn.close()
 
 
-def total_students():
+def total_students(organization_id=None):
     conn = connect()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT COUNT(*) FROM students")
+    if organization_id:
+        cursor.execute(
+            q("SELECT COUNT(*) FROM students WHERE organization_id=?"),
+            (organization_id,)
+        )
+    else:
+        cursor.execute("SELECT COUNT(*) FROM students")
+
     total = cursor.fetchone()[0]
 
     conn.close()
@@ -292,73 +393,114 @@ def total_users():
     return total
 
 
-def recent_students():
+def recent_students(organization_id=None):
     conn = connect()
     cursor = conn.cursor()
 
-    cursor.execute("""
-        SELECT name, roll
-        FROM students
-        ORDER BY id DESC
-        LIMIT 5
-    """)
+    if organization_id:
+        cursor.execute(
+            q("""
+                SELECT name, roll
+                FROM students
+                WHERE organization_id=?
+                ORDER BY id DESC
+                LIMIT 5
+            """),
+            (organization_id,)
+        )
+    else:
+        cursor.execute("""
+            SELECT name, roll
+            FROM students
+            ORDER BY id DESC
+            LIMIT 5
+        """)
 
     students = cursor.fetchall()
     conn.close()
 
     return students
 
-
-def mark_attendance(roll, date, status):
+def mark_attendance(roll, date, status, organization_id):
     conn = connect()
     cursor = conn.cursor()
 
     cursor.execute(
-        q("SELECT id FROM attendance WHERE roll=? AND date=?"),
-        (roll, date)
+        q("""
+            SELECT id FROM attendance
+            WHERE roll=? AND date=? AND organization_id=?
+        """),
+        (roll, date, organization_id)
     )
 
     existing = cursor.fetchone()
 
     if existing:
         cursor.execute(
-            q("UPDATE attendance SET status=? WHERE roll=? AND date=?"),
-            (status, roll, date)
+            q("""
+                UPDATE attendance
+                SET status=?
+                WHERE roll=? AND date=? AND organization_id=?
+            """),
+            (status, roll, date, organization_id)
         )
     else:
         cursor.execute(
-            q("INSERT INTO attendance (roll, date, status) VALUES (?, ?, ?)"),
-            (roll, date, status)
+            q("""
+                INSERT INTO attendance
+                (roll, date, status, organization_id)
+                VALUES (?, ?, ?, ?)
+            """),
+            (roll, date, status, organization_id)
         )
 
     conn.commit()
     conn.close()
 
-
-def get_attendance():
+def get_attendance(organization_id):
     conn = connect()
     cursor = conn.cursor()
 
-    cursor.execute("""
-        SELECT attendance.id, students.name, attendance.roll, attendance.date, attendance.status
-        FROM attendance
-        LEFT JOIN students ON students.roll = attendance.roll
-        ORDER BY attendance.date DESC
-    """)
+    cursor.execute(
+        q("""
+            SELECT attendance.id,
+                   students.name,
+                   attendance.roll,
+                   attendance.date,
+                   attendance.status
+            FROM attendance
+            LEFT JOIN students
+                ON students.roll = attendance.roll
+                AND students.organization_id = attendance.organization_id
+            WHERE attendance.organization_id=?
+            ORDER BY attendance.date DESC
+        """),
+        (organization_id,)
+    )
 
     data = cursor.fetchall()
+
     conn.close()
 
     return data
 
 
-def attendance_summary():
+def attendance_summary(organization_id):
     conn = connect()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT status, COUNT(*) FROM attendance GROUP BY status")
-    rows = cursor.fetchall()
+    cursor.execute(
+        q("""
+            SELECT status, COUNT(*)
+            FROM attendance
+            WHERE organization_id=?
+            GROUP BY status
+        """),
+        (organization_id,)
+    )
 
+    rows = cursor.fetchall()
+    
     conn.close()
 
     summary = {
@@ -373,7 +515,7 @@ def attendance_summary():
     return summary
 
 
-def add_marks(roll, subject, internal, external):
+def add_marks(roll, subject, internal, external, organization_id):
     total = internal + external
 
     conn = connect()
@@ -381,39 +523,54 @@ def add_marks(roll, subject, internal, external):
 
     cursor.execute(
         q("""
-            INSERT INTO marks (roll, subject, internal, external, total)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO marks
+            (roll, subject, internal, external, total, organization_id)
+            VALUES (?, ?, ?, ?, ?, ?)
         """),
-        (roll, subject, internal, external, total)
+        (roll, subject, internal, external, total, organization_id)
     )
 
     conn.commit()
     conn.close()
 
 
-def get_marks():
+def get_marks(organization_id):
     conn = connect()
     cursor = conn.cursor()
 
-    cursor.execute("""
-        SELECT marks.id, students.name, marks.roll, marks.subject,
-               marks.internal, marks.external, marks.total
-        FROM marks
-        LEFT JOIN students ON students.roll = marks.roll
-        ORDER BY marks.id DESC
-    """)
+    cursor.execute(
+        q("""
+            SELECT marks.id, students.name, marks.roll, marks.subject,
+                   marks.internal, marks.external, marks.total
+            FROM marks
+            LEFT JOIN students
+                ON students.roll = marks.roll
+                AND students.organization_id = marks.organization_id
+            WHERE marks.organization_id=?
+            ORDER BY marks.id DESC
+        """),
+        (organization_id,)
+    )
 
     data = cursor.fetchall()
     conn.close()
-
+    
     return data
 
 
-def marks_summary():
+def marks_summary(organization_id):
     conn = connect()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT COUNT(*), MAX(total), AVG(total) FROM marks")
+    cursor.execute(
+        q("""
+            SELECT COUNT(*), MAX(total), AVG(total)
+            FROM marks
+            WHERE organization_id=?
+        """),
+        (organization_id,)
+    )
+
     row = cursor.fetchone()
 
     conn.close()
@@ -425,7 +582,7 @@ def marks_summary():
     }
 
 
-def add_fee(roll, total_fee, paid_amount, payment_date):
+def add_fee(roll, total_fee, paid_amount, payment_date, organization_id):
     pending_amount = total_fee - paid_amount
 
     conn = connect()
@@ -433,27 +590,34 @@ def add_fee(roll, total_fee, paid_amount, payment_date):
 
     cursor.execute(
         q("""
-            INSERT INTO fees (roll, total_fee, paid_amount, pending_amount, payment_date)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO fees
+            (roll, total_fee, paid_amount, pending_amount, payment_date, organization_id)
+            VALUES (?, ?, ?, ?, ?, ?)
         """),
-        (roll, total_fee, paid_amount, pending_amount, payment_date)
+        (roll, total_fee, paid_amount, pending_amount, payment_date, organization_id)
     )
 
     conn.commit()
     conn.close()
 
 
-def get_fees():
+def get_fees(organization_id):
     conn = connect()
     cursor = conn.cursor()
 
-    cursor.execute("""
-        SELECT fees.id, students.name, fees.roll, fees.total_fee,
-               fees.paid_amount, fees.pending_amount, fees.payment_date
-        FROM fees
-        LEFT JOIN students ON students.roll = fees.roll
-        ORDER BY fees.id DESC
-    """)
+    cursor.execute(
+        q("""
+            SELECT fees.id, students.name, fees.roll, fees.total_fee,
+                   fees.paid_amount, fees.pending_amount, fees.payment_date
+            FROM fees
+            LEFT JOIN students
+                ON students.roll = fees.roll
+                AND students.organization_id = fees.organization_id
+            WHERE fees.organization_id=?
+            ORDER BY fees.id DESC
+        """),
+        (organization_id,)
+    )
 
     data = cursor.fetchall()
     conn.close()
@@ -461,11 +625,19 @@ def get_fees():
     return data
 
 
-def fees_summary():
+def fees_summary(organization_id):
     conn = connect()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT SUM(total_fee), SUM(paid_amount), SUM(pending_amount) FROM fees")
+    cursor.execute(
+        q("""
+            SELECT SUM(total_fee), SUM(paid_amount), SUM(pending_amount)
+            FROM fees
+            WHERE organization_id=?
+        """),
+        (organization_id,)
+    )
+
     row = cursor.fetchone()
 
     conn.close()
@@ -475,6 +647,7 @@ def fees_summary():
         "paid": row[1] or 0,
         "pending": row[2] or 0
     }
+
 
 def reset_admin_password():
     conn = connect()
@@ -511,3 +684,149 @@ def admin_exists():
     conn.close()
 
     return admin is not None
+
+def create_organization(name):
+    conn = connect()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        q("INSERT INTO organizations (name) VALUES (?)"),
+        (name,)
+    )
+
+    conn.commit()
+
+    cursor.execute(
+        q("SELECT id FROM organizations WHERE name=?"),
+        (name,)
+    )
+
+    org = cursor.fetchone()
+
+    conn.close()
+
+    return org[0]
+
+
+def get_user_with_org(username):
+    conn = connect()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        q("SELECT id, username, role, organization_id FROM users WHERE username=?"),
+        (username,)
+    )
+
+    user = cursor.fetchone()
+
+    conn.close()
+
+    return user
+
+
+def organization_exists():
+    conn = connect()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT id FROM organizations LIMIT 1")
+    org = cursor.fetchone()
+
+    conn.close()
+
+    return org is not None
+
+def dashboard_summary(organization_id):
+    conn = connect()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        q("SELECT COUNT(*) FROM students WHERE organization_id=?"),
+        (organization_id,)
+    )
+    students = cursor.fetchone()[0] or 0
+
+    cursor.execute(
+        q("SELECT status, COUNT(*) FROM attendance WHERE organization_id=? GROUP BY status"),
+        (organization_id,)
+    )
+    attendance_rows = cursor.fetchall()
+
+    attendance = {
+        "Present": 0,
+        "Absent": 0,
+        "Leave": 0
+    }
+
+    for status, count in attendance_rows:
+        attendance[status] = count
+
+    cursor.execute(
+        q("SELECT SUM(paid_amount), SUM(pending_amount) FROM fees WHERE organization_id=?"),
+        (organization_id,)
+    )
+    fee_row = cursor.fetchone()
+
+    fees = {
+        "paid": fee_row[0] or 0,
+        "pending": fee_row[1] or 0
+    }
+
+    cursor.execute(
+        q("SELECT AVG(total), MAX(total) FROM marks WHERE organization_id=?"),
+        (organization_id,)
+    )
+    marks_row = cursor.fetchone()
+
+    marks = {
+        "average": round(marks_row[0] or 0, 2),
+        "highest": marks_row[1] or 0
+    }
+
+    conn.close()
+
+    return {
+        "students": students,
+        "attendance": attendance,
+        "fees": fees,
+        "marks": marks
+    }
+
+def clear_orphan_records(organization_id):
+    conn = connect()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        q("""
+            DELETE FROM attendance
+            WHERE organization_id=?
+            AND roll NOT IN (
+                SELECT roll FROM students WHERE organization_id=?
+            )
+        """),
+        (organization_id, organization_id)
+    )
+
+    cursor.execute(
+        q("""
+            DELETE FROM marks
+            WHERE organization_id=?
+            AND roll NOT IN (
+                SELECT roll FROM students WHERE organization_id=?
+            )
+        """),
+        (organization_id, organization_id)
+    )
+
+    cursor.execute(
+        q("""
+            DELETE FROM fees
+            WHERE organization_id=?
+            AND roll NOT IN (
+                SELECT roll FROM students WHERE organization_id=?
+            )
+        """),
+        (organization_id, organization_id)
+    )
+
+    conn.commit()
+    conn.close()
