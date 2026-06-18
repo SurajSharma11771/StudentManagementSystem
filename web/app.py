@@ -191,18 +191,15 @@ def add():
     roll = int(request.form["roll"])
 
     photo_filename = None
-
-    if "photo" in request.files:
-        photo = request.files["photo"]
-
+    
+    
     if photo and photo.filename != "":
 
-        result = cloudinary.uploader.upload(
-            photo,
-            folder="student_erp"
-        )
-
+        print("Cloudinary upload starting...")
+        result = cloudinary.uploader.upload(photo,folder="student_erp")
+        print(result)
         photo_filename = result["secure_url"]
+        print("Saved URL:", photo_filename)
 
     email = request.form.get("email")
     phone = request.form.get("phone")
@@ -289,6 +286,8 @@ def update():
 
     if "photo" in request.files:
         photo = request.files["photo"]
+        print("Cloudinary upload starting...")
+        
 
         if photo and photo.filename != "" and allowed_file(photo.filename):
             ext = photo.filename.rsplit(".", 1)[1].lower()
