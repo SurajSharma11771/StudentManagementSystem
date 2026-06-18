@@ -127,6 +127,15 @@ def init_db():
             organization_id INTEGER
         )
     """)
+    cursor.execute(f"""
+    CREATE TABLE IF NOT EXISTS activity_logs (
+        id {id_type},
+        username TEXT NOT NULL,
+        action TEXT NOT NULL,
+        organization_id INTEGER,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+""")
 
     conn.commit()
     conn.close()
