@@ -53,7 +53,9 @@ from app.database_sqlite import (
     check_user_password,
     get_students_paginated,
     get_all_activity_logs,
-    update_student_full
+    update_student_full,
+    get_organization_by_id,
+    update_organization_name
 )
 
 from web.auth import (
@@ -156,7 +158,7 @@ def home():
     students = get_students_paginated(org_id, per_page, offset)
     student_count = total_students(org_id)
     total_pages = (student_count + per_page - 1) // per_page
-    user_count = total_users()
+    user_count = total_users(org_id)
     recent = recent_students(org_id)
 
     return render_template(
@@ -312,15 +314,16 @@ def update():
     )
 
     update_student_profile(
-        int(roll),
-        email,
-        phone,
-        address,
-        dob,
-        course,
-        semester,
-        photo_filename
-    )
+    int(roll),
+    email,
+    phone,
+    address,
+    dob,
+    course,
+    semester,
+    photo_filename,
+    session.get("organization_id")
+)
 
     add_activity_log(
         session.get("user"),
@@ -1337,7 +1340,39 @@ def profile_page():
     if not is_logged_in():
         return redirect("/login")
 
-    return render_template("profile.html")
+    org = get_organization_by_id(
+        session.get("organization_id")
+    )
+
+    return render_template(
+        "profile.html",
+        org=org
+    )
+
+@app.route("/organization/update", methods=["POST"])
+def update_organization():
+    if not is_logged_in():
+        return redirect("/login")
+
+    if not is_admin():
+        return "Access Denied", 403
+
+    new_name = request.form["organization_name"]
+
+    update_organization_name(
+        session.get("organization_id"),
+        new_name
+    )
+
+    add_activity_log(
+        session.get("user"),
+        f"Updated organization name to {new_name}",
+        session.get("organization_id")
+    )
+
+    flash("Organization name updated successfully!", "success")
+
+    return redirect("/profile")
 
 if __name__ == "__main__":
     app.run(debug=True)

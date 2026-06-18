@@ -32,11 +32,42 @@
 
         <p><strong>Role:</strong> {{ session.get("role")|title }}</p>
 
-        <p><strong>Organization ID:</strong> {{ session.get("organization_id") }}</p>
+        <p>
+    <strong>Organization:</strong>
+    {{ org[1] if org else "Not Set" }}
+</p>
 
         <a href="/change-password" class="btn btn-warning w-100">
             Change Password
         </a>
+
+        {% if session.get("role") == "admin" %}
+
+<hr>
+
+<h5>🏢 Organization Settings</h5>
+
+<form action="/organization/update" method="POST">
+
+    <div class="mb-3">
+        <label class="form-label">
+            Organization Name
+        </label>
+
+        <input type="text"
+               name="organization_name"
+               class="form-control"
+               value="{{ org[1] if org else '' }}"
+               required>
+    </div>
+
+    <button class="btn btn-success w-100">
+        Update Organization Name
+    </button>
+
+</form>
+
+{% endif %}
 
     </div>
 

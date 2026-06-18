@@ -287,18 +287,45 @@ def get_student_by_roll(roll, organization_id=None):
     return student
 
 
-def update_student_profile(roll, email, phone, address, dob, course, semester, photo):
+def update_student_profile(
+    roll,
+    email,
+    phone,
+    address,
+    dob,
+    course,
+    semester,
+    photo,
+    organization_id
+):
     conn = connect()
     cursor = conn.cursor()
 
     cursor.execute(
-        q("""
-            UPDATE students
-            SET email=?, phone=?, address=?, dob=?, course=?, semester=?, photo=?
-            WHERE roll=?
-        """),
-        (email, phone, address, dob, course, semester, photo, roll)
+    q("""
+        UPDATE students
+        SET email=?,
+            phone=?,
+            address=?,
+            dob=?,
+            course=?,
+            semester=?,
+            photo=?
+        WHERE roll=?
+        AND organization_id=?
+    """),
+    (
+        email,
+        phone,
+        address,
+        dob,
+        course,
+        semester,
+        photo,
+        roll,
+        organization_id
     )
+)
 
     conn.commit()
     conn.close()
@@ -421,14 +448,21 @@ def total_students(organization_id=None):
     return total
 
 
-def total_users():
+def total_users(organization_id=None):
     conn = connect()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT COUNT(*) FROM users")
-    total = cursor.fetchone()[0]
+    if organization_id:
+        cursor.execute(
+            q("SELECT COUNT(*) FROM users WHERE organization_id=?"),
+            (organization_id,)
+        )
+    else:
+        cursor.execute("SELECT COUNT(*) FROM users")
 
+    total = cursor.fetchone()[0]
     conn.close()
+
     return total
 
 
@@ -1023,3 +1057,30 @@ def update_student_full(
 
     conn.commit()
     conn.close()
+
+def get_organization_by_id(org_id):
+    conn = connect()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        q("SELECT id, name FROM organizations WHERE id=?"),
+        (org_id,)
+    )
+
+    org = cursor.fetchone()
+    conn.close()
+
+    return org
+
+
+def update_organization_name(org_id, new_name):
+    conn = connect()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        q("UPDATE organizations SET name=? WHERE id=?"),
+        (new_name, org_id)
+    )
+
+    conn.commit()
+    conn.close() 
