@@ -1,6 +1,24 @@
+import os
+from werkzeug.utils import secure_filename
+from PIL import Image
+from io import BytesIO
+from flask import send_file
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib import colors
+from reportlab.platypus import Image as ReportLabImage
 from flask import Flask, render_template, request, redirect, session, send_file, jsonify
-from openpyxl import Workbook
+from openpyxl import Workbook, load_workbook
 from flask import Flask, render_template, request, redirect, session
+from flask import (
+    Flask,
+    render_template,
+    request,
+    redirect,
+    session,
+    flash
+)
+
 from app.database_sqlite import (
     init_db,
     add_student,
@@ -28,7 +46,14 @@ from app.database_sqlite import (
     admin_exists,
     create_organization,
     organization_exists,
-    dashboard_summary
+    dashboard_summary,
+    add_activity_log,
+    get_recent_activity_logs,
+    change_password,
+    check_user_password,
+    get_students_paginated,
+    get_all_activity_logs,
+    update_student_full
 )
 
 from web.auth import (
@@ -37,16 +62,7 @@ from web.auth import (
     is_admin,
     logout_user
 )
-import os
-from werkzeug.utils import secure_filename
-from PIL import Image
 
-
-from io import BytesIO
-from flask import send_file
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
-from reportlab.lib.styles import getSampleStyleSheet
-from reportlab.lib import colors
 
 app = Flask(__name__)
 UPLOAD_FOLDER = "web/static/uploads/students"
@@ -57,7 +73,7 @@ app.secret_key = "mysecretkey"
 API_KEY = "student-erp-secret-key"
 
 init_db()
-
+os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
 #reset_admin_password()
 
 def allowed_file(filename):
@@ -130,10 +146,16 @@ def home():
         return redirect("/login")
     
     org_id = session.get("organization_id")
+    activity_logs = get_recent_activity_logs(org_id)
     dashboard = dashboard_summary(org_id)
 
-    students = get_students(org_id)
+    page = int(request.args.get("page", 1))
+    per_page = 10
+    offset = (page - 1) * per_page
+
+    students = get_students_paginated(org_id, per_page, offset)
     student_count = total_students(org_id)
+    total_pages = (student_count + per_page - 1) // per_page
     user_count = total_users()
     recent = recent_students(org_id)
 
@@ -145,7 +167,10 @@ def home():
         student_count=student_count,
         user_count=user_count,
         recent=recent,
-        dashboard=dashboard
+        dashboard=dashboard,
+        activity_logs=activity_logs,
+        page=page,
+        total_pages=total_pages
     )
 
 @app.route("/add", methods=["POST"])
@@ -155,11 +180,60 @@ def add():
 
     name = request.form["name"]
     roll = int(request.form["roll"])
+
+    photo_filename = None
+
+    if "photo" in request.files:
+        photo = request.files["photo"]
+
+        if photo and photo.filename != "" and allowed_file(photo.filename):
+
+            ext = photo.filename.rsplit(".", 1)[1].lower()
+
+            photo_filename = secure_filename(
+                f"student_{roll}.{ext}"
+            )
+
+            filepath = os.path.join(
+                app.config["UPLOAD_FOLDER"],
+                photo_filename
+            )
+
+            image = Image.open(photo)
+            image = image.resize((300, 300))
+            image.save(filepath)
+
+    email = request.form.get("email")
+    phone = request.form.get("phone")
+    address = request.form.get("address")
+    dob = request.form.get("dob")
+    course = request.form.get("course")
+    semester = request.form.get("semester")
+
     add_student(
-    name,
-    roll,
-    session.get("organization_id")
-)
+        name,
+        roll,
+        session.get("organization_id"),
+        email,
+        phone,
+        address,
+        dob,
+        course,
+        semester,
+        photo_filename
+    )
+
+    add_activity_log(
+        session.get("user"),
+        f"Added student {name} with roll {roll}",
+        session.get("organization_id")
+    )
+
+    flash(
+        "Student added successfully!",
+        "success"
+    )
+
     return redirect("/")
 
 
@@ -176,6 +250,16 @@ def delete(roll):
     roll,
     session.get("organization_id")
 )
+    add_activity_log(
+    session.get("user"),
+    f"Deleted student with roll {roll}",
+    session.get("organization_id")
+)
+    flash(
+    "Student deleted successfully!",
+    "danger"
+)
+
     return redirect("/")
 
 
@@ -190,12 +274,61 @@ def update():
         return "Roll number missing", 400
 
     name = request.form["name"]
+    email = request.form.get("email")
+    phone = request.form.get("phone")
+    address = request.form.get("address")
+    dob = request.form.get("dob")
+    course = request.form.get("course")
+    semester = request.form.get("semester")
 
-    update_student(
-    int(roll),
-    name,
-    session.get("organization_id")
-)
+    org_id = session.get("organization_id")
+
+    student = get_student_by_roll(int(roll), org_id)
+    photo_filename = student[9] if student else None
+
+    if "photo" in request.files:
+        photo = request.files["photo"]
+
+        if photo and photo.filename != "" and allowed_file(photo.filename):
+            ext = photo.filename.rsplit(".", 1)[1].lower()
+            photo_filename = secure_filename(f"student_{roll}.{ext}")
+
+            filepath = os.path.join(app.config["UPLOAD_FOLDER"], photo_filename)
+
+            image = Image.open(photo)
+            image = image.resize((300, 300))
+            image.save(filepath)
+
+    update_student_full(
+        int(roll),
+        name,
+        email,
+        phone,
+        address,
+        dob,
+        course,
+        semester,
+        org_id
+    )
+
+    update_student_profile(
+        int(roll),
+        email,
+        phone,
+        address,
+        dob,
+        course,
+        semester,
+        photo_filename
+    )
+
+    add_activity_log(
+        session.get("user"),
+        f"Updated student {name} with roll {roll}",
+        org_id
+    )
+
+    flash("Student updated successfully!", "warning")
 
     return redirect("/")
 
@@ -1019,6 +1152,192 @@ def update_profile_details(roll):
     )
 
     return redirect(f"/student/{roll}")
+
+@app.route("/change-password", methods=["GET", "POST"])
+def change_password_page():
+
+    if not is_logged_in():
+        return redirect("/login")
+
+    error = None
+
+    if request.method == "POST":
+
+        old_password = request.form["old_password"]
+        new_password = request.form["new_password"]
+        confirm_password = request.form["confirm_password"]
+
+        if not check_user_password(session.get("user"), old_password):
+            error = "Old password is incorrect"
+
+        elif new_password != confirm_password:
+            error = "New password and confirm password do not match"
+
+        elif len(new_password) < 6:
+            error = "Password must be at least 6 characters"
+
+        else:
+            change_password(
+                session.get("user"),
+                new_password
+            )
+
+            add_activity_log(
+                session.get("user"),
+                "Changed account password",
+                session.get("organization_id")
+            )
+
+            flash(
+    "Password changed successfully!",
+    "success"
+)
+
+            return redirect("/")
+
+    return render_template("change_password.html", error=error)
+
+@app.route("/student/id-card/<int:roll>")
+def student_id_card(roll):
+    if not is_logged_in():
+        return redirect("/login")
+
+    org_id = session.get("organization_id")
+    student = get_student_by_roll(roll, org_id)
+
+    if student is None:
+        return "Student Not Found", 404
+
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer)
+
+    styles = getSampleStyleSheet()
+    content = []
+
+    content.append(Paragraph("Student ID Card", styles["Title"]))
+    content.append(Spacer(1, 12))
+
+    photo_path = None
+
+    if student[9]:
+        photo_path = os.path.join(
+            app.config["UPLOAD_FOLDER"],
+            student[9]
+        )
+
+    if photo_path and os.path.exists(photo_path):
+        content.append(ReportLabImage(photo_path, width=100, height=100))
+        content.append(Spacer(1, 12))
+
+    data = [
+        ["Name", student[1]],
+        ["Roll", student[2]],
+        ["Email", student[3] or "-"],
+        ["Phone", student[4] or "-"],
+        ["Course", student[7] or "-"],
+        ["Semester", student[8] or "-"]
+    ]
+
+    table = Table(data)
+
+    table.setStyle(TableStyle([
+        ("GRID", (0, 0), (-1, -1), 1, colors.black),
+        ("BACKGROUND", (0, 0), (0, -1), colors.lightgrey),
+        ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+    ]))
+
+    content.append(table)
+
+    doc.build(content)
+    buffer.seek(0)
+
+    return send_file(
+        buffer,
+        as_attachment=True,
+        download_name=f"student_{roll}_id_card.pdf",
+        mimetype="application/pdf"
+    )
+
+@app.route("/students/import", methods=["POST"])
+def import_students():
+    if not is_logged_in():
+        return redirect("/login")
+
+    if not is_admin():
+        return "Access Denied", 403
+
+    file = request.files["file"]
+
+    workbook = load_workbook(file)
+    sheet = workbook.active
+
+    org_id = session.get("organization_id")
+    imported = 0
+
+    for row in sheet.iter_rows(min_row=2, values_only=True):
+        name = row[0]
+        roll = row[1]
+
+        if name and roll:
+            add_student(name, int(roll), org_id)
+            imported += 1
+
+    add_activity_log(
+        session.get("user"),
+        f"Imported {imported} students from Excel",
+        org_id
+    )
+
+    return redirect("/")
+
+@app.route("/students/template")
+def download_student_template():
+
+    if not is_logged_in():
+        return redirect("/login")
+
+    workbook = Workbook()
+    sheet = workbook.active
+
+    sheet.title = "Students"
+
+    sheet["A1"] = "Name"
+    sheet["B1"] = "Roll"
+
+    buffer = BytesIO()
+
+    workbook.save(buffer)
+
+    buffer.seek(0)
+
+    return send_file(
+        buffer,
+        as_attachment=True,
+        download_name="student_import_template.xlsx",
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
+@app.route("/activity-logs")
+def activity_logs_page():
+
+    if not is_logged_in():
+        return redirect("/login")
+
+    logs = get_all_activity_logs(
+        session.get("organization_id")
+    )
+
+    return render_template(
+        "activity_logs.html",
+        logs=logs
+    )
+
+@app.route("/profile")
+def profile_page():
+    if not is_logged_in():
+        return redirect("/login")
+
+    return render_template("profile.html")
 
 if __name__ == "__main__":
     app.run(debug=True)

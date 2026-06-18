@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Student Dashboard</title>
+    <title>Student Management System</title>
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -14,22 +14,132 @@
         .table thead { background: #343a40; color: white; }
         .chart-box { height: 220px; position: relative; }
         .chart-box canvas { width: 100% !important; height: 100% !important; }
+        .activity-card {height: 360px;}.activity-card .card-body {overflow-y: auto;}
     </style>
-    
+
 </head>
 
 <body>
 
+    {% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
 
-<nav class="navbar navbar-dark bg-dark px-3 shadow">
-    <span class="navbar-brand fw-bold">🎓 Student Management System</span>
-    <a href="/logout" class="btn btn-danger btn-sm">Logout</a>
+<div class="container mt-3">
+
+    {% for category, message in messages %}
+
+    <div class="alert alert-{{ category }} alert-dismissible fade show">
+
+        {{ message }}
+
+        <button
+            type="button"
+            class="btn-close"
+            data-bs-dismiss="alert">
+        </button>
+
+    </div>
+
+    {% endfor %}
+
+</div>
+
+{% endif %}
+{% endwith %}
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow">
+
+    <div class="container-fluid">
+
+        <a class="navbar-brand fw-bold" href="/">
+            🎓 Student Management System
+        </a>
+
+        <div class="ms-auto d-flex align-items-center">
+
+            <span class="text-white me-3">
+                Welcome, {{ session.get("user") }}
+            </span>
+
+            <a href="/" class="btn btn-secondary btn-sm me-2">
+                Dashboard
+            </a>
+
+            {% if session.get("role") == "admin" %}
+            <a href="/users" class="btn btn-info btn-sm me-2">
+                Manage Users
+            </a>
+            {% endif %}
+
+            <a href="/profile" class="btn btn-primary btn-sm me-2">
+                Profile
+            </a>
+
+            <a href="/change-password" class="btn btn-warning btn-sm me-2">
+                Password
+            </a>
+
+            <a href="/logout" class="btn btn-danger btn-sm">
+                Logout
+            </a>
+
+        </div>
+
+    </div>
+
 </nav>
 
-<div class="container mt-4">
+<div class="container-fluid mt-4 px-5">
+<div class="row">
 
+    <div class="col-lg-2">
+        <div class="card shadow-sm activity-card mb-3">
+
+            <div class="card-header fw-bold">
+                🕒 Recent Activity
+            </div>
+
+            <div class="card-body">
+
+                {% for log in activity_logs %}
+
+                <div class="border-bottom pb-2 mb-2">
+                    <strong>{{ log[0] }}</strong>
+                    <br>
+                    {{ log[1] }}
+                    <br>
+                    <small class="text-muted">{{ log[2] }}</small>
+                </div>
+
+                {% endfor %}
+
+            </div>
+
+        </div>
+<div class="card shadow-sm p-3 mt-3">
+
+    <h5>🆕 Recent Students</h5>
+
+    <ul class="list-group">
+
+        {% for s in recent %}
+
+        <li class="list-group-item">
+            {{ s[0] }} (Roll {{ s[1] }})
+        </li>
+
+        {% endfor %}
+
+    </ul>
+
+</div>
+    </div>
+
+    <div class="col-lg-8">
+        
     <div class="row mb-4">
 
+        
         <div class="col-md-3">
             <div class="card shadow bg-primary text-white">
                 <div class="card-body">
@@ -68,62 +178,104 @@
 
     </div>
 
-    <div class="card shadow-sm p-3 mb-3">
-        <h5>🆕 Recent Students</h5>
+    
 
-        <ul class="list-group">
-            {% for s in recent %}
-            <li class="list-group-item">
-                {{ s[0] }} (Roll {{ s[1] }})
-            </li>
-            {% endfor %}
-        </ul>
-    </div>
 
-    <div class="card shadow-sm p-3 mb-3">
-        <h5 class="mb-3">➕ Add Student</h5>
 
-        <form action="/add" method="post" class="row g-2">
+<div class="row mb-3">
 
-            <div class="col-md-5">
-                <input type="text" name="name" class="form-control" placeholder="Student Name" required>
+    <div class="col-md-6">
+
+        <div class="card shadow-sm p-3 h-100">
+
+            <h5 class="mb-3">🎓 Students</h5>
+
+            <button class="btn btn-success mb-3"
+                    data-bs-toggle="modal"
+                    data-bs-target="#addStudentModal">
+                + Add Student
+            </button>
+
+            <form action="/search" method="get" class="row g-2 mb-3">
+
+                <div class="col-md-8">
+                    <input type="text"
+                           name="q"
+                           class="form-control"
+                           placeholder="Search student..."
+                           value="{{ query }}">
+                </div>
+
+                <div class="col-md-4">
+                    <button class="btn btn-primary w-100">
+                        Search
+                    </button>
+                </div>
+
+            </form>
+
+            <div class="d-flex flex-wrap gap-2">
+
+                <a href="/attendance" class="btn btn-dark">
+                    📅 Attendance
+                </a>
+
+                <a href="/marks" class="btn btn-dark">
+                    📝 Marks
+                </a>
+
+                <a href="/fees" class="btn btn-dark">
+                    💰 Fees
+                </a>
+
+                <a href="/activity-logs" class="btn btn-dark">
+                    🕒 Activity Logs
+                </a>
+
             </div>
-
-            <div class="col-md-4">
-                <input type="number" name="roll" class="form-control" placeholder="Roll Number" required>
             </div>
-
-            <div class="col-md-3">
-                <button class="btn btn-success w-100">Add</button>
-            </div>
-
-        </form>
-    </div>
-
-    <div class="card shadow-sm p-3 mb-3">
-        <form action="/search" method="get" class="row g-2">
-
-            <div class="col-md-9">
-                <input type="text" name="q" class="form-control" placeholder="Search student..." value="{{ query }}">
-            </div>
-
-            <div class="col-md-3">
-                <button class="btn btn-primary w-100">Search</button>
-            </div>
-
-        </form>
-    </div>
-
-    <div class="card shadow-sm p-3 mb-3">
-        <h5 class="mb-3">⚡ Quick Actions</h5>
-
-        <div class="d-flex flex-wrap gap-2">
-            <a href="/users" class="btn btn-dark">👥 Manage Users</a>
-            <a href="/attendance" class="btn btn-dark">📅 Attendance</a>
-            <a href="/marks" class="btn btn-dark">📝 Marks</a>
-            <a href="/fees" class="btn btn-dark">💰 Fees</a>
         </div>
+
+    <div class="col-md-6">
+
+        <div class="card shadow-sm p-3 h-100">
+
+            <h5 class="mb-3">📊 Bulk Import Students</h5>
+
+            <p class="text-muted mb-2">
+                Excel format: Name | Roll
+            </p>
+
+            <a href="/students/template"
+               class="btn btn-success mb-3">
+               📥 Download Excel Template
+            </a>
+
+            <form action="/students/import"
+                  method="POST"
+                  enctype="multipart/form-data"
+                  class="row g-2">
+
+                <div class="col-md-8">
+                    <input type="file"
+                           name="file"
+                           class="form-control"
+                           accept=".xlsx"
+                           required>
+                </div>
+
+                <div class="col-md-4">
+                    <button class="btn btn-dark w-100">
+                        Import Excel
+                    </button>
+                </div>
+
+            </form>
+        </div>
+
     </div>
+
+</div>
 
     <div class="card shadow-sm p-3 mb-3">
         <h5 class="mb-3">📄 Reports</h5>
@@ -177,8 +329,11 @@
         <table class="table table-hover align-middle">
             <thead>
                 <tr>
+                    <th>Photo</th>
                     <th>Name</th>
                     <th>Roll</th>
+                    <th>Course</th>
+                    <th>Semester</th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -186,25 +341,67 @@
             <tbody>
                 {% for s in students %}
                 <tr>
-                    <td>{{ s[0] }}</td>
-                    <td>{{ s[1] }}</td>
+                    <td>
+                            {% if s[8] %}
+                                <img src="{{ url_for('static', filename='uploads/students/' + s[8]) }}"
+                                width="45"
+                                height="45"
+                                class="rounded-circle">
+                            {% else %}
+                                <img src="{{ url_for('static', filename='images/default-avatar.png') }}"
+                                width="45"
+                                height="45"
+                                class="rounded-circle">
+                            {% endif %}
+                    </td>
+
+                        <td>{{ s[0] }}</td>
+                        <td>{{ s[1] }}</td>
+                        <td>{{ s[6] or "-" }}</td>
+                        <td>{{ s[7] or "-" }}</td>
 
                     <td>
-                        <a href="/student/{{ s[1] }}" class="btn btn-info btn-sm">
-                            Profile
-                        </a>
+                        
+                        <button class="btn btn-secondary btn-sm"
+        data-bs-toggle="modal"
+        data-bs-target="#viewStudentModal"
+        data-name="{{ s[0] }}"
+        data-roll="{{ s[1] }}"
+        data-email="{{ s[2] or '-' }}"
+        data-phone="{{ s[3] or '-' }}"
+        data-address="{{ s[4] or '-' }}"
+        data-dob="{{ s[5] or '-' }}"
+        data-course="{{ s[6] or '-' }}"
+        data-semester="{{ s[7] or '-' }}"
+        data-photo="{{ s[8] or '' }}"
+        onclick="setViewData(this)">
+    View
+</button>
 
                         <button class="btn btn-warning btn-sm"
                             data-bs-toggle="modal"
                             data-bs-target="#editModal"
-                            onclick="setEditData('{{ s[1] }}', '{{ s[0] }}')">
+
+                            data-roll="{{ s[1] }}"
+                            data-name="{{ s[0] }}"
+                            data-email="{{ s[2] or '' }}"
+                            data-phone="{{ s[3] or '' }}"
+                            data-address="{{ s[4] or '' }}"
+                            data-dob="{{ s[5] or '' }}"
+                            data-course="{{ s[6] or '' }}"
+                            data-semester="{{ s[7] or '' }}"
+                            data-photo="{{ s[8] or '' }}"
+                            onclick="setEditData(this)">
                             Edit
                         </button>
 
                         {% if session.get("role") == "admin" %}
-                        <a href="/delete/{{ s[1] }}" class="btn btn-danger btn-sm">
-                            Delete
-                        </a>
+                        <button class="btn btn-danger btn-sm"
+        data-bs-toggle="modal"
+        data-bs-target="#deleteModal"
+        onclick="setDeleteData('{{ s[1] }}', '{{ s[0] }}')">
+    Delete
+</button>
                         {% endif %}
                     </td>
                 </tr>
@@ -212,15 +409,154 @@
             </tbody>
 
         </table>
+
+        <div class="d-flex justify-content-between align-items-center">
+
+    {% if page > 1 %}
+        <a href="/?page={{ page - 1 }}" class="btn btn-secondary">
+            Previous
+        </a>
+    {% else %}
+        <span></span>
+    {% endif %}
+
+    <span class="fw-bold">
+        Page {{ page }} of {{ total_pages }}
+    </span>
+
+    {% if page < total_pages %}
+        <a href="/?page={{ page + 1 }}" class="btn btn-secondary">
+            Next
+        </a>
+    {% else %}
+        <span></span>
+    {% endif %}
+
+        </div>
+
+    </div>
+
+</div>
+    </div>
+
+</div>
+<!-- ADD STUDENT MODAL -->
+<div class="modal fade" id="addStudentModal">
+
+    <div class="modal-dialog modal-lg">
+
+        <div class="modal-content">
+
+            <form action="/add" method="post" enctype="multipart/form-data">
+
+                <div class="modal-header">
+                    <h5 class="modal-title">Add Student</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+
+                    <div class="mb-3 row">
+                        <label class="col-sm-3 col-form-label">Student Name *</label>
+                        <div class="col-sm-9">
+                            <input type="text" name="name" class="form-control" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3 row">
+                        <label class="col-sm-3 col-form-label">Roll *</label>
+                        <div class="col-sm-9">
+                            <input type="number" name="roll" class="form-control" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3 row">
+                        <label class="col-sm-3 col-form-label">Email</label>
+                        <div class="col-sm-9">
+                            <input type="email" name="email" class="form-control">
+                        </div>
+                    </div>
+
+                    <div class="mb-3 row">
+                        <label class="col-sm-3 col-form-label">Phone</label>
+                        <div class="col-sm-9">
+                            <input type="text" name="phone" class="form-control">
+                        </div>
+                    </div>
+
+                    <div class="mb-3 row">
+                        <label class="col-sm-3 col-form-label">Address</label>
+                        <div class="col-sm-9">
+                            <input type="text" name="address" class="form-control">
+                        </div>
+                    </div>
+
+                    <div class="mb-3 row">
+                        <label class="col-sm-3 col-form-label">DOB</label>
+                        <div class="col-sm-9">
+                            <input type="date" name="dob" class="form-control">
+                        </div>
+                    </div>
+
+                    <div class="mb-3 row">
+                        <label class="col-sm-3 col-form-label">Course</label>
+                        <div class="col-sm-9">
+                            <input type="text" name="course" class="form-control">
+                        </div>
+                    </div>
+
+                    <div class="mb-3 row">
+                        <label class="col-sm-3 col-form-label">Semester</label>
+                        <div class="col-sm-9">
+                            <input type="text" name="semester" class="form-control">
+                        </div>
+                    </div>
+                    <div class="mb-3 row">
+
+    <label class="col-sm-3 col-form-label">
+        Photo
+    </label>
+
+    <div class="col-sm-9">
+
+        <input type="file"
+               name="photo"
+               id="addPhoto"
+               class="form-control"
+               accept=".png,.jpg,.jpeg,.webp"
+               onchange="previewAddPhoto(this)">
+
+        <img id="addPhotoPreview"
+             src="/static/images/default-avatar.png"
+             width="90"
+             height="90"
+             class="rounded-circle border shadow-sm mt-3">
+
+    </div>
+
+</div>
+
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn btn-success w-100">
+                        Save Student
+                    </button>
+                </div>
+
+            </form>
+
+        </div>
+
     </div>
 
 </div>
 
 <div class="modal fade" id="editModal">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
 
-            <form action="/update" method="post">
+            <form action="/update" method="post" enctype="multipart/form-data">
 
                 <div class="modal-header">
                     <h5 class="modal-title">Edit Student</h5>
@@ -228,17 +564,184 @@
                 </div>
 
                 <div class="modal-body">
+
                     <input type="hidden" name="roll" id="editRoll">
 
-                    <label class="form-label">Name</label>
-                    <input type="text" name="name" id="editName" class="form-control" required>
+                    <div class="mb-3 row">
+                        <label class="col-sm-3 col-form-label">Student Name *</label>
+                        <div class="col-sm-9">
+                            <input type="text" name="name" id="editName" class="form-control" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3 row">
+                        <label class="col-sm-3 col-form-label">Email</label>
+                        <div class="col-sm-9">
+                            <input type="email" name="email" id="editEmail" class="form-control">
+                        </div>
+                    </div>
+
+                    <div class="mb-3 row">
+                        <label class="col-sm-3 col-form-label">Phone</label>
+                        <div class="col-sm-9">
+                            <input type="text" name="phone" id="editPhone" class="form-control">
+                        </div>
+                    </div>
+
+                    <div class="mb-3 row">
+                        <label class="col-sm-3 col-form-label">Address</label>
+                        <div class="col-sm-9">
+                            <input type="text" name="address" id="editAddress" class="form-control">
+                        </div>
+                    </div>
+
+                    <div class="mb-3 row">
+                        <label class="col-sm-3 col-form-label">DOB</label>
+                        <div class="col-sm-9">
+                            <input type="date" name="dob" id="editDob" class="form-control">
+                        </div>
+                    </div>
+
+                    <div class="mb-3 row">
+                        <label class="col-sm-3 col-form-label">Course</label>
+                        <div class="col-sm-9">
+                            <input type="text" name="course" id="editCourse" class="form-control">
+                        </div>
+                    </div>
+
+                    <div class="mb-3 row">
+                        <label class="col-sm-3 col-form-label">Semester</label>
+                        <div class="col-sm-9">
+                            <input type="text" name="semester" id="editSemester" class="form-control">
+                        </div>
+                    </div>
+                    <div class="mb-3 row">
+
+    <label class="col-sm-3 col-form-label">
+        Photo
+    </label>
+
+    <div class="col-sm-9">
+
+        <input type="file"
+               name="photo"
+               id="editPhoto"
+               class="form-control"
+               accept=".png,.jpg,.jpeg,.webp"
+               onchange="previewEditPhoto(this)">
+
+        <img id="editPhotoPreview"
+             src="/static/images/default-avatar.png"
+             width="90"
+             height="90"
+             class="rounded-circle border shadow-sm mt-3">
+
+    </div>
+
+</div>
+
                 </div>
 
                 <div class="modal-footer">
-                    <button class="btn btn-primary w-100">Update</button>
+                    <button class="btn btn-primary w-100">
+                        Update Student
+                    </button>
                 </div>
 
             </form>
+
+        </div>
+    </div>
+</div>
+
+<!-- DELETE MODAL -->
+<div class="modal fade" id="deleteModal">
+
+    <div class="modal-dialog">
+
+        <div class="modal-content">
+
+            <div class="modal-header bg-danger text-white">
+
+                <h5 class="modal-title">
+                    Delete Student
+                </h5>
+
+                <button type="button"
+                        class="btn-close btn-close-white"
+                        data-bs-dismiss="modal">
+                </button>
+
+            </div>
+
+            <div class="modal-body">
+
+                <p>
+                    Are you sure you want to delete this student?
+                </p>
+
+                <div class="alert alert-warning">
+
+                    <strong>Name:</strong>
+                    <span id="deleteStudentName"></span>
+
+                    <br>
+
+                    <strong>Roll:</strong>
+                    <span id="deleteStudentRoll"></span>
+
+                </div>
+
+            </div>
+
+            <div class="modal-footer">
+
+                <button class="btn btn-secondary"
+                        data-bs-dismiss="modal">
+                    Cancel
+                </button>
+
+                <a id="deleteConfirmBtn"
+                   href="#"
+                   class="btn btn-danger">
+                    Delete
+                </a>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<div class="modal fade" id="viewStudentModal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title">Student Details</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body text-center">
+
+                <img id="viewPhoto"
+                     src=""
+                     width="120"
+                     height="120"
+                     class="rounded-circle border shadow-sm mb-3">
+
+                <p><strong>Name:</strong> <span id="viewName"></span></p>
+                <p><strong>Roll:</strong> <span id="viewRoll"></span></p>
+                <p><strong>Email:</strong> <span id="viewEmail"></span></p>
+                <p><strong>Phone:</strong> <span id="viewPhone"></span></p>
+                <p><strong>Address:</strong> <span id="viewAddress"></span></p>
+                <p><strong>DOB:</strong> <span id="viewDob"></span></p>
+                <p><strong>Course:</strong> <span id="viewCourse"></span></p>
+                <p><strong>Semester:</strong> <span id="viewSemester"></span></p>
+
+            </div>
 
         </div>
     </div>
@@ -298,12 +801,117 @@ new Chart(document.getElementById("feesChart"), {
         maintainAspectRatio: false
     }
 });
-
-function setEditData(roll, name) {
-    document.getElementById("editRoll").value = roll;
-    document.getElementById("editName").value = name;
-}
 </script>
+
+<script>
+function setEditData(btn) {
+
+    document.getElementById("editRoll").value =
+        btn.dataset.roll;
+
+    document.getElementById("editName").value =
+        btn.dataset.name;
+
+    document.getElementById("editEmail").value =
+        btn.dataset.email;
+
+    document.getElementById("editPhone").value =
+        btn.dataset.phone;
+
+    document.getElementById("editAddress").value =
+        btn.dataset.address;
+
+    document.getElementById("editDob").value =
+        btn.dataset.dob;
+
+    document.getElementById("editCourse").value =
+        btn.dataset.course;
+
+    document.getElementById("editSemester").value =
+        btn.dataset.semester;
+
+    if (btn.dataset.photo) {
+
+    document.getElementById(
+        "editPhotoPreview"
+    ).src =
+        "/static/uploads/students/" +
+        btn.dataset.photo;
+
+}
+else {
+
+    document.getElementById(
+        "editPhotoPreview"
+    ).src =
+        "/static/images/default-avatar.png";
+
+}
+}
+
+function setDeleteData(roll, name) {
+
+    document.getElementById(
+        "deleteStudentName"
+    ).innerText = name;
+
+    document.getElementById(
+        "deleteStudentRoll"
+    ).innerText = roll;
+
+    document.getElementById(
+        "deleteConfirmBtn"
+    ).href = "/delete/" + roll;
+}
+
+function previewAddPhoto(input) {
+
+    const preview =
+        document.getElementById("addPhotoPreview");
+
+    if (input.files && input.files[0]) {
+
+        preview.src =
+            URL.createObjectURL(input.files[0]);
+
+    }
+}
+
+function setViewData(btn) {
+    document.getElementById("viewName").innerText = btn.dataset.name;
+    document.getElementById("viewRoll").innerText = btn.dataset.roll;
+    document.getElementById("viewEmail").innerText = btn.dataset.email;
+    document.getElementById("viewPhone").innerText = btn.dataset.phone;
+    document.getElementById("viewAddress").innerText = btn.dataset.address;
+    document.getElementById("viewDob").innerText = btn.dataset.dob;
+    document.getElementById("viewCourse").innerText = btn.dataset.course;
+    document.getElementById("viewSemester").innerText = btn.dataset.semester;
+
+    if (btn.dataset.photo) {
+        document.getElementById("viewPhoto").src =
+            "/static/uploads/students/" + btn.dataset.photo;
+    } else {
+        document.getElementById("viewPhoto").src =
+            "/static/images/default-avatar.png";
+    }
+}
+
+function previewEditPhoto(input) {
+
+    const preview =
+        document.getElementById("editPhotoPreview");
+
+    if (input.files && input.files[0]) {
+
+        preview.src =
+            URL.createObjectURL(input.files[0]);
+
+    }
+}
+
+
+</script>
+
 
 </body>
 </html>

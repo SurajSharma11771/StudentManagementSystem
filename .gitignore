@@ -2,3 +2,4 @@ __pycache__/
 *.pyc
 data/students.db
 .env
+web/static/uploads/students/*

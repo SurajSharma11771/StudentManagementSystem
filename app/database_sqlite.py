@@ -127,17 +127,32 @@ def init_db():
     ensure_org_columns()
 
 
-def add_student(name, roll, organization_id=None):
+def add_student(
+    name,
+    roll,
+    organization_id=None,
+    email=None,
+    phone=None,
+    address=None,
+    dob=None,
+    course=None,
+    semester=None,
+    photo=None
+):
     conn = connect()
     cursor = conn.cursor()
 
     try:
         cursor.execute(
-            q("INSERT INTO students (name, roll, organization_id) VALUES (?, ?, ?)"),
-            (name, roll, organization_id)
+            q("""
+                INSERT INTO students
+                (name, roll, organization_id, email, phone, address, dob, course, semester, photo)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """),
+            (name, roll, organization_id, email, phone, address, dob, course, semester, photo)
         )
         conn.commit()
-        print("Student added successfully!")
+
     except Exception as e:
         conn.rollback()
         print("Student already exists!", e)
@@ -151,15 +166,23 @@ def get_students(organization_id=None):
 
     if organization_id:
         cursor.execute(
-            q("SELECT name, roll FROM students WHERE organization_id=?"),
+            q("""
+                SELECT name, roll, email, phone, address, dob, course, semester, photo
+                FROM students
+                WHERE organization_id=?
+                ORDER BY id DESC
+            """),
             (organization_id,)
         )
     else:
-        cursor.execute("SELECT name, roll FROM students")
-
+        cursor.execute("""
+            SELECT name, roll, email, phone, address, dob, course, semester, photo
+            FROM students
+            ORDER BY id DESC
+        """)
 
     data = cursor.fetchall()
-    
+
     conn.close()
     return data
 
@@ -826,6 +849,160 @@ def clear_orphan_records(organization_id):
             )
         """),
         (organization_id, organization_id)
+    )
+
+    conn.commit()
+    conn.close()
+
+def add_activity_log(username, action, organization_id):
+    conn = connect()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        q("""
+            INSERT INTO activity_logs (username, action, organization_id)
+            VALUES (?, ?, ?)
+        """),
+        (username, action, organization_id)
+    )
+
+    conn.commit()
+    conn.close()
+
+
+def get_recent_activity_logs(organization_id, limit=5):
+    conn = connect()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        q("""
+            SELECT username, action, created_at
+            FROM activity_logs
+            WHERE organization_id=?
+            ORDER BY id DESC
+            LIMIT ?
+        """),
+        (organization_id, limit)
+    )
+
+    logs = cursor.fetchall()
+    conn.close()
+    return logs
+
+def change_password(username, new_password):
+    conn = connect()
+    cursor = conn.cursor()
+
+    hashed_password = generate_password_hash(new_password)
+
+    cursor.execute(
+        q("""
+            UPDATE users
+            SET password=?
+            WHERE username=?
+        """),
+        (hashed_password, username)
+    )
+
+    conn.commit()
+    conn.close()
+
+def check_user_password(username, password):
+    conn = connect()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        q("SELECT password FROM users WHERE username=?"),
+        (username,)
+    )
+
+    row = cursor.fetchone()
+    conn.close()
+
+    if row is None:
+        return False
+
+    return check_password_hash(row[0], password)
+
+def get_students_paginated(organization_id, limit, offset):
+    conn = connect()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        q("""
+            SELECT name, roll, email, phone, address, dob, course, semester, photo
+            FROM students
+            WHERE organization_id=?
+            ORDER BY id DESC
+            LIMIT ? OFFSET ?
+        """),
+        (organization_id, limit, offset)
+    )
+
+    students = cursor.fetchall()
+    conn.close()
+
+    return students
+
+def get_all_activity_logs(organization_id):
+    conn = connect()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        q("""
+            SELECT username,
+                   action,
+                   created_at
+            FROM activity_logs
+            WHERE organization_id=?
+            ORDER BY id DESC
+        """),
+        (organization_id,)
+    )
+
+    logs = cursor.fetchall()
+
+    conn.close()
+
+    return logs
+
+def update_student_full(
+    roll,
+    name,
+    email,
+    phone,
+    address,
+    dob,
+    course,
+    semester,
+    organization_id
+):
+    conn = connect()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        q("""
+            UPDATE students
+            SET name=?,
+                email=?,
+                phone=?,
+                address=?,
+                dob=?,
+                course=?,
+                semester=?
+            WHERE roll=? AND organization_id=?
+        """),
+        (
+            name,
+            email,
+            phone,
+            address,
+            dob,
+            course,
+            semester,
+            roll,
+            organization_id
+        )
     )
 
     conn.commit()
