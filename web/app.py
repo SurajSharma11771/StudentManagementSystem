@@ -1,6 +1,9 @@
 import os
+from dotenv import load_dotenv
+load_dotenv()
 import cloudinary
 import cloudinary.uploader
+
 from werkzeug.utils import secure_filename
 from PIL import Image
 from io import BytesIO
@@ -524,15 +527,16 @@ def upload_student_photo(roll):
         image.save(filepath)
 
         update_student_profile(
-            roll,
-            student[3],
-            student[4],
-            student[5],
-            student[6],
-            student[7],
-            student[8],
-            filename
-        )
+    roll,
+    student[3],
+    student[4],
+    student[5],
+    student[6],
+    student[7],
+    student[8],
+    filename,
+    session.get("organization_id")
+)
 
     return redirect(f"/student/{roll}")
 
@@ -1158,15 +1162,16 @@ def update_profile_details(roll):
     photo = student[9]
 
     update_student_profile(
-        roll,
-        email,
-        phone,
-        address,
-        dob,
-        course,
-        semester,
-        photo
-    )
+    roll,
+    email,
+    phone,
+    address,
+    dob,
+    course,
+    semester,
+    photo,
+    session.get("organization_id")
+)
 
     return redirect(f"/student/{roll}")
 
