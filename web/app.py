@@ -74,6 +74,9 @@ cloudinary.config(
     api_key=os.environ.get("CLOUDINARY_API_KEY"),
     api_secret=os.environ.get("CLOUDINARY_API_SECRET")
 )
+print("Cloud Name:", os.environ.get("CLOUDINARY_CLOUD_NAME"))
+print("API Key Exists:", bool(os.environ.get("CLOUDINARY_API_KEY")))
+print("API Secret Exists:", bool(os.environ.get("CLOUDINARY_API_SECRET")))
 UPLOAD_FOLDER = "web/static/uploads/students"
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "webp"}
 
@@ -193,12 +196,25 @@ def add():
     photo_filename = None
     
     
-    if photo and photo.filename != "":
+    if "photo" in request.files:
+        photo = request.files["photo"]
 
-        print("Cloudinary upload starting...")
-        result = cloudinary.uploader.upload(photo,folder="student_erp")
-        print(result)
-        photo_filename = result["secure_url"]
+        if photo and photo.filename != "":
+
+            try:
+                result = cloudinary.uploader.upload(
+                photo,
+                folder="student_erp"
+            )
+
+                print("CLOUDINARY RESULT:", result)
+
+                photo_filename = result["secure_url"]
+
+            except Exception as e:
+                print("CLOUDINARY ERROR:", str(e))
+                raise
+
         print("Saved URL:", photo_filename)
 
     email = request.form.get("email")
