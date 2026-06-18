@@ -195,22 +195,14 @@ def add():
     if "photo" in request.files:
         photo = request.files["photo"]
 
-        if photo and photo.filename != "" and allowed_file(photo.filename):
+    if photo and photo.filename != "":
 
-            ext = photo.filename.rsplit(".", 1)[1].lower()
+        result = cloudinary.uploader.upload(
+            photo,
+            folder="student_erp"
+        )
 
-            photo_filename = secure_filename(
-                f"student_{roll}.{ext}"
-            )
-
-            filepath = os.path.join(
-                app.config["UPLOAD_FOLDER"],
-                photo_filename
-            )
-
-            image = Image.open(photo)
-            image = image.resize((300, 300))
-            image.save(filepath)
+        photo_filename = result["secure_url"]
 
     email = request.form.get("email")
     phone = request.form.get("phone")
