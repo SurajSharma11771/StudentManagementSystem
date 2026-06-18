@@ -17,12 +17,20 @@ def ensure_org_columns():
 
     for table in tables:
         try:
-            cursor.execute(f"ALTER TABLE {table} ADD COLUMN organization_id INTEGER")
+            cursor.execute(
+                f"ALTER TABLE {table} ADD COLUMN organization_id INTEGER"
+            )
+            conn.commit()
         except Exception:
-            pass
+            conn.rollback()
 
-    cursor.execute("SELECT id FROM organizations LIMIT 1")
-    org = cursor.fetchone()
+    try:
+        cursor.execute("SELECT id FROM organizations LIMIT 1")
+        org = cursor.fetchone()
+    except Exception:
+        conn.rollback()
+        conn.close()
+        return
 
     if org:
         org_id = org[0]
@@ -33,11 +41,10 @@ def ensure_org_columns():
                     q(f"UPDATE {table} SET organization_id=? WHERE organization_id IS NULL"),
                     (org_id,)
                 )
+                conn.commit()
             except Exception:
-                pass
-
-    conn.commit()
-    conn.close()
+                conn.rollback()
+                conn.close()
 
 
 def init_db():
