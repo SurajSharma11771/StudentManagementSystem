@@ -343,7 +343,7 @@
                 <tr>
                     <td>
                             {% if s[8] %}
-                                <img src="{{ url_for('static', filename='uploads/students/' + s[8]) }}"
+                            <img src="{{ s[8] }}"
                                 width="45"
                                 height="45"
                                 class="rounded-circle">
@@ -830,14 +830,7 @@ function setEditData(btn) {
     document.getElementById("editSemester").value =
         btn.dataset.semester;
 
-    if (btn.dataset.photo) {
-
-    document.getElementById(
-        "editPhotoPreview"
-    ).src =
-        "/static/uploads/students/" +
-        btn.dataset.photo;
-
+    if (btn.dataset.photo) {document.getElementById("editPhotoPreview").src = btn.dataset.photo;
 }
 else {
 
@@ -889,7 +882,7 @@ function setViewData(btn) {
 
     if (btn.dataset.photo) {
         document.getElementById("viewPhoto").src =
-            "/static/uploads/students/" + btn.dataset.photo;
+            btn.dataset.photo
     } else {
         document.getElementById("viewPhoto").src =
             "/static/images/default-avatar.png";

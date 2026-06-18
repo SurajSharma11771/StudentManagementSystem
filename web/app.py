@@ -1,4 +1,6 @@
 import os
+import cloudinary
+import cloudinary.uploader
 from werkzeug.utils import secure_filename
 from PIL import Image
 from io import BytesIO
@@ -67,6 +69,11 @@ from web.auth import (
 
 
 app = Flask(__name__)
+cloudinary.config(
+    cloud_name=os.environ.get("CLOUDINARY_CLOUD_NAME"),
+    api_key=os.environ.get("CLOUDINARY_API_KEY"),
+    api_secret=os.environ.get("CLOUDINARY_API_SECRET")
+)
 UPLOAD_FOLDER = "web/static/uploads/students"
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "webp"}
 
