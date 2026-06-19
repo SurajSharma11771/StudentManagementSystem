@@ -4,3 +4,13 @@ data/students.db
 .env
 web/static/uploads/students/*data/students_backup.db
 web/static/uploads/students/*
+.venv/
+__pycache__/
+*.pyc
+data/*.db
+data/*backup*.db
+.env
+web/static/uploads/students/*
+*.log
+students_report.pdf
+students_report.xlsx
