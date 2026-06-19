@@ -65,7 +65,8 @@ from app.database_sqlite import (
     update_organization_name,
     approve_user,
     reject_user,
-    get_organization_by_name
+    get_organization_by_name,
+    delete_organization_data,
 )
 
 from web.auth import (
@@ -1511,6 +1512,34 @@ def profile_page():
         "profile.html",
         org=org
     )
+
+@app.route("/delete-organization", methods=["POST"])
+def delete_organization_route():
+    if not is_logged_in():
+        return redirect("/login")
+
+    if not is_admin():
+        return "Access Denied", 403
+
+    org_id = session.get("organization_id")
+    typed_name = request.form["organization_name"]
+
+    org = get_organization_by_id(org_id)
+
+    if org is None:
+        return "Organization not found", 404
+
+    if typed_name != org[1]:
+        flash("Organization name does not match.", "danger")
+        return redirect("/profile")
+
+    delete_organization_data(org_id)
+
+    session.clear()
+
+    flash("Organization deleted successfully.", "danger")
+
+    return redirect("/register")
 
 @app.route("/organization/update", methods=["POST"])
 def update_organization():

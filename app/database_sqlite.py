@@ -1192,3 +1192,45 @@ def get_organization_by_name(name):
     conn.close()
 
     return org
+
+def delete_organization_data(organization_id):
+    conn = connect()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        q("DELETE FROM activity_logs WHERE organization_id=?"),
+        (organization_id,)
+    )
+
+    cursor.execute(
+        q("DELETE FROM attendance WHERE organization_id=?"),
+        (organization_id,)
+    )
+
+    cursor.execute(
+        q("DELETE FROM marks WHERE organization_id=?"),
+        (organization_id,)
+    )
+
+    cursor.execute(
+        q("DELETE FROM fees WHERE organization_id=?"),
+        (organization_id,)
+    )
+
+    cursor.execute(
+        q("DELETE FROM students WHERE organization_id=?"),
+        (organization_id,)
+    )
+
+    cursor.execute(
+        q("DELETE FROM users WHERE organization_id=?"),
+        (organization_id,)
+    )
+
+    cursor.execute(
+        q("DELETE FROM organizations WHERE id=?"),
+        (organization_id,)
+    )
+
+    conn.commit()
+    conn.close()
