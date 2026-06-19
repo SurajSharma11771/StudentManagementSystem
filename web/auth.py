@@ -7,9 +7,14 @@ def login_user(username, password):
     user = verify_user(username, password)
 
     if user:
+
+        if "error" in user:
+            return "pending"
+
         session["user"] = user["username"]
         session["role"] = user["role"]
         session["organization_id"] = user["organization_id"]
+
         return True
 
     return False

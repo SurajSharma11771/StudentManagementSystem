@@ -1,6 +1,8 @@
 import os
+
 from dotenv import load_dotenv
 load_dotenv()
+
 import cloudinary
 import cloudinary.uploader
 
@@ -60,7 +62,10 @@ from app.database_sqlite import (
     get_all_activity_logs,
     update_student_full,
     get_organization_by_id,
-    update_organization_name
+    update_organization_name,
+    approve_user,
+    reject_user,
+    get_organization_by_name
 )
 
 from web.auth import (
@@ -128,6 +133,96 @@ def setup_admin():
 
     return render_template("setup_admin.html")
 
+@app.route("/register", methods=["GET", "POST"])
+def register():
+
+    if request.method == "POST":
+        org_name = request.form["organization_name"]
+        username = request.form["username"]
+        password = request.form["password"]
+        existing_org = get_organization_by_name(org_name)
+
+        if existing_org:
+            flash("Organization name already exists. Please choose another name.", "danger")
+            return redirect("/register")
+        organization_id = create_organization(org_name)
+
+        add_user(
+    username,
+    password,
+    organization_id,
+    "admin",
+    "approved"
+)
+
+        users = get_users(organization_id)
+
+        for user in users:
+            if user[1] == username:
+                update_user_role(user[0], "admin")
+                break
+
+        flash("Organization registered successfully! Please login.", "success")
+
+        return redirect("/login")
+
+    return render_template("register.html")
+
+@app.route("/staff-register", methods=["GET", "POST"])
+def staff_register():
+
+    if request.method == "POST":
+        org_name = request.form["organization_name"]
+        username = request.form["username"]
+        password = request.form["password"]
+        from app.database_sqlite import get_organization_by_name
+        org = get_organization_by_name(org_name)
+
+        if org is None:
+            return "Organization not found"
+
+        add_user(
+            username,
+            password,
+            org[0],
+            "staff",
+            "pending"
+        )
+
+        flash("Staff account request sent. Wait for admin approval.", "warning")
+
+        return redirect("/login")
+
+    return render_template("role_register.html", role="Staff")
+
+
+@app.route("/teacher-register", methods=["GET", "POST"])
+def teacher_register():
+
+    if request.method == "POST":
+        org_name = request.form["organization_name"]
+        username = request.form["username"]
+        password = request.form["password"]
+        from app.database_sqlite import get_organization_by_name
+        org = get_organization_by_name(org_name)
+
+        if org is None:
+            return "Organization not found"
+
+        add_user(
+            username,
+            password,
+            org[0],
+            "teacher",
+            "pending"
+        )
+
+        flash("Teacher account request sent. Wait for admin approval.", "warning")
+
+        return redirect("/login")
+
+    return render_template("role_register.html", role="Teacher")
+
 # 🔐 LOGIN PAGE
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -139,9 +234,25 @@ def login():
         username = request.form["username"]
         password = request.form["password"]
 
-        if login_user(username, password):
+        login_result = login_user(username, password)
+
+        if login_result == True:
+
+            org = get_organization_by_id(
+        session.get("organization_id")
+            )
+
+            if org:
+                session["organization_name"] = org[1]
+
             return redirect("/")
+
+        elif login_result == "pending":
+
+            return "Your account is pending admin approval."
+
         else:
+
             return "Invalid Credentials"
 
     return render_template("login.html")
@@ -565,11 +676,15 @@ def add_new_user():
     username = request.form["username"]
     password = request.form["password"]
     role = request.form["role"]
+    if role == "admin":
+        return "Only one admin allowed."
 
     add_user(
     username,
     password,
-    session.get("organization_id")
+    session.get("organization_id"),
+    role,
+    "approved"
 )
 
     # Role update
@@ -589,8 +704,37 @@ def remove_user(user_id):
 
     if not is_admin():
         return "Access Denied", 403
+    users = get_users(session.get("organization_id"))
 
+    for u in users:
+        if u[0] == user_id and u[1] == session.get("user"):
+            return "You cannot delete your own account.", 403
     delete_user(user_id)
+
+    return redirect("/users")
+
+@app.route("/approve_user/<int:user_id>")
+def approve_user_route(user_id):
+    if not is_logged_in():
+        return redirect("/login")
+
+    if not is_admin():
+        return "Access Denied", 403
+
+    approve_user(user_id)
+
+    return redirect("/users")
+
+
+@app.route("/reject_user/<int:user_id>")
+def reject_user_route(user_id):
+    if not is_logged_in():
+        return redirect("/login")
+
+    if not is_admin():
+        return "Access Denied", 403
+
+    reject_user(user_id)
 
     return redirect("/users")
 

@@ -44,8 +44,21 @@ def ensure_org_columns():
                 conn.commit()
             except Exception:
                 conn.rollback()
-                conn.close()
+    conn.close()
 
+
+
+def ensure_user_status_column():
+    conn = connect()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("ALTER TABLE users ADD COLUMN status TEXT DEFAULT 'approved'")
+        conn.commit()
+    except Exception:
+        conn.rollback()
+
+    conn.close()
 
 def init_db():
     os.makedirs("data", exist_ok=True)
@@ -141,6 +154,7 @@ def init_db():
     conn.close()
 
     ensure_org_columns()
+    ensure_user_status_column()
 
 
 def add_student(
@@ -331,28 +345,53 @@ def update_student_profile(
     conn.close()
 
 
-def add_user(username, password, organization_id=None):
+def add_user(
+    username,
+    password,
+    organization_id=None,
+    role="user",
+    status="approved"
+):
     conn = connect()
     cursor = conn.cursor()
 
     hashed_password = generate_password_hash(password)
 
     try:
+
         cursor.execute(
             q("""
-                INSERT INTO users (username, password, organization_id)
-                VALUES (?, ?, ?)
+                INSERT INTO users (
+                    username,
+                    password,
+                    organization_id,
+                    role,
+                    status
+                )
+                VALUES (?, ?, ?, ?, ?)
             """),
-            (username, hashed_password, organization_id)
+            (
+                username,
+                hashed_password,
+                organization_id,
+                role,
+                status
+            )
         )
 
         conn.commit()
 
     except Exception as e:
+
         conn.rollback()
-        print("Username already exists.", e)
+
+        print(
+            "Username already exists.",
+            e
+        )
 
     finally:
+
         conn.close()
 
 
@@ -361,7 +400,11 @@ def verify_user(username, password):
     cursor = conn.cursor()
 
     cursor.execute(
-        q("SELECT username, password, role, organization_id FROM users WHERE username=?"),
+        q("""
+            SELECT username, password, role, organization_id, status
+            FROM users
+            WHERE username=?
+        """),
         (username,)
     )
 
@@ -375,12 +418,19 @@ def verify_user(username, password):
     stored_password = row[1]
     role = row[2]
     organization_id = row[3]
+    status = row[4]
+
+    if status != "approved":
+        return {
+            "error": "pending"
+        }
 
     if check_password_hash(stored_password, password):
         return {
             "username": db_username,
             "role": role,
-            "organization_id": organization_id
+            "organization_id": organization_id,
+            "status": status
         }
 
     return None
@@ -391,16 +441,35 @@ def get_users(organization_id=None):
     cursor = conn.cursor()
 
     if organization_id:
+
         cursor.execute(
-            q("SELECT id, username, role FROM users WHERE organization_id=?"),
+            q("""
+                SELECT
+                    id,
+                    username,
+                    role,
+                    status
+                FROM users
+                WHERE organization_id=?
+            """),
             (organization_id,)
         )
+
     else:
-        cursor.execute("SELECT id, username, role FROM users")
+
+        cursor.execute("""
+            SELECT
+                id,
+                username,
+                role,
+                status
+            FROM users
+        """)
 
     users = cursor.fetchall()
 
     conn.close()
+
     return users
 
 
@@ -416,6 +485,30 @@ def delete_user(user_id):
     conn.commit()
     conn.close()
 
+def approve_user(user_id):
+    conn = connect()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        q("UPDATE users SET status=? WHERE id=?"),
+        ("approved", user_id)
+    )
+
+    conn.commit()
+    conn.close()
+
+
+def reject_user(user_id):
+    conn = connect()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        q("UPDATE users SET status=? WHERE id=?"),
+        ("rejected", user_id)
+    )
+
+    conn.commit()
+    conn.close()
 
 def update_user_role(user_id, role):
     conn = connect()
@@ -1084,3 +1177,18 @@ def update_organization_name(org_id, new_name):
 
     conn.commit()
     conn.close() 
+
+def get_organization_by_name(name):
+    conn = connect()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        q("SELECT id, name FROM organizations WHERE name=?"),
+        (name,)
+    )
+
+    org = cursor.fetchone()
+
+    conn.close()
+
+    return org
