@@ -111,10 +111,17 @@ StudentManagementSystem
 Add screenshots here:
 
 * Login Page
+![alt text](1.png)
 * Dashboard
+![alt text](2.png)
 * User Management
+![alt text](8.png)
 * Student Management
+![alt text](4.png)
+![alt text](5.png)
+![alt text](7.png)
 * Profile Page
+![alt text](6.png)
 
 ---
 
