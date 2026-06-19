@@ -74,11 +74,7 @@
             <a href="/profile" class="btn btn-primary btn-sm me-2">
                 Profile
             </a>
-
-            <a href="/change-password" class="btn btn-warning btn-sm me-2">
-                Password
-            </a>
-
+            
             <a href="/logout" class="btn btn-danger btn-sm">
                 Logout
             </a>
@@ -159,20 +155,13 @@
         </div>
 
         <div class="col-md-3">
-            <div class="card shadow bg-warning text-dark">
-                <div class="card-body">
-                    <h6>Your Role</h6>
-                    <h4>{{ session.get("role")|title }}</h4>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-3">
             <div class="card shadow bg-dark text-white">
                 <div class="card-body">
-                    <h6>Logged In</h6>
-                    <h3>
+                    <h5 class="mb-2">Logged In As</h5>
+
+<h5 class="mb-0">
     {{ session.get("user") }}
+</h5>
     <small class="text-secondary">
         ({{ session.get("role", "User")|title }})
     </small>
