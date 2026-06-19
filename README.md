@@ -110,18 +110,31 @@ StudentManagementSystem
 
 Add screenshots here:
 
-* Login Page
-![alt text](1.png)
-* Dashboard
-![alt text](2.png)
-* User Management
-![alt text](8.png)
-* Student Management
-![alt text](4.png)
-![alt text](5.png)
-![alt text](7.png)
-* Profile Page
-![alt text](6.png)
+* Login Page:
+
+![alt text](login.png)
+
+* Dashboard:
+
+![alt text](dashboard.png)
+
+* User Management:
+
+![alt text](<user management.png>)
+
+* Student Management:
+
+![alt text](<add students.png>)
+
+![alt text](<student details.png>)
+
+![alt text](<edit student.png>)
+
+* Profile Page:
+
+![alt text](<user profile.png>)
+
+![alt text](<deleting organisation-1.png>)
 
 ---
 
