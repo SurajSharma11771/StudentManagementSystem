@@ -112,29 +112,29 @@ Add screenshots here:
 
 * Login Page:
 
-![alt text](login.png)
+![alt text](screenshots/login.png)
 
 * Dashboard:
 
-![alt text](dashboard.png)
-
+![alt text](screenshots/dashboard.png)
+    
 * User Management:
 
-![alt text](<user management.png>)
+![alt text](screenshots/usermanagement.png)
 
 * Student Management:
 
-![alt text](<add students.png>)
+![alt text](screenshots/addstudents.png)
 
-![alt text](<student details.png>)
+![alt text](screenshots/studentdetails.png)
 
-![alt text](<edit student.png>)
+![alt text](screenshots/editstudent.png)
 
 * Profile Page:
 
-![alt text](<user profile.png>)
+![alt text](screenshots/userprofile.png)
 
-![alt text](<deleting organisation-1.png>)
+![alt text](screenshots/deletingorganisation.png)
 
 ---
 
