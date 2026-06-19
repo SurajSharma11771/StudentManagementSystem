@@ -416,19 +416,15 @@ def update():
     photo_filename = student[9] if student else None
 
     if "photo" in request.files:
-        photo = request.files["photo"]
-        print("Cloudinary upload starting...")
-        
+        photo = request.files["photo"]        
 
         if photo and photo.filename != "" and allowed_file(photo.filename):
-            ext = photo.filename.rsplit(".", 1)[1].lower()
-            photo_filename = secure_filename(f"student_{roll}.{ext}")
+            result = cloudinary.uploader.upload(
+            photo,
+            folder="student_erp"
+        )
 
-            filepath = os.path.join(app.config["UPLOAD_FOLDER"], photo_filename)
-
-            image = Image.open(photo)
-            image = image.resize((300, 300))
-            image.save(filepath)
+    photo_filename = result["secure_url"]
 
     update_student_full(
         int(roll),
