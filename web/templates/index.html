@@ -8,18 +8,354 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
-        body { background: #f4f6f9; }
-        .card { border-radius: 12px; }
-        .btn { border-radius: 8px; }
-        .table thead { background: #343a40; color: white; }
-        .chart-box { height: 220px; position: relative; }
-        .chart-box canvas { width: 100% !important; height: 100% !important; }
-        .activity-card {height: 360px;}.activity-card .card-body {overflow-y: auto;}
-    </style>
+    body {
+        min-height: 100vh;
+        background:
+            radial-gradient(circle at top left, rgba(59,130,246,0.14), transparent 28%),
+            radial-gradient(circle at top right, rgba(168,85,247,0.12), transparent 25%),
+            linear-gradient(135deg, #f8fbff 0%, #eef6ff 45%, #fff7fb 100%);
+        color: #0f172a;
+        font-family: "Segoe UI", Arial, sans-serif;
+    }
+
+    .navbar {
+        background: rgba(255,255,255,0.85) !important;
+        backdrop-filter: blur(12px);
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .navbar-brand,
+    .navbar span {
+        color: #0f172a !important;
+    }
+
+    .card {
+        border: 1px solid rgba(226,232,240,0.9);
+        border-radius: 22px;
+        background: rgba(255,255,255,0.88);
+        box-shadow: 0 12px 35px rgba(15,23,42,0.08) !important;
+        overflow: hidden;
+    }
+
+    .card-header {
+        background: rgba(255,255,255,0.9);
+        border-bottom: 1px solid #e5e7eb;
+        font-size: 1.1rem;
+        padding: 18px 20px;
+    }
+
+    .btn {
+        border-radius: 13px;
+        font-weight: 600;
+        padding: 10px 18px;
+        border: none;
+    }
+
+    .form-control {
+        border-radius: 12px;
+        padding: 11px 14px;
+        border: 1px solid #dbe3ef;
+    }
+
+    .stat-card-blue {
+        background: linear-gradient(135deg, #eef6ff, #ffffff);
+        border: 1px solid #bfdbfe;
+        color: #1d4ed8;
+    }
+
+    .stat-card-green {
+        background: linear-gradient(135deg, #ecfdf5, #ffffff);
+        border: 1px solid #bbf7d0;
+        color: #15803d;
+    }
+
+    .stat-card-yellow {
+        background: linear-gradient(135deg, #fffbeb, #ffffff);
+        border: 1px solid #fde68a;
+        color: #111827;
+    }
+
+    .stat-card-yellow small {
+        color: #f59e0b !important;
+        font-weight: 600;
+    }
+
+    .main-green-btn {
+        background: linear-gradient(135deg, #16a34a, #059669);
+        color: white;
+        box-shadow: 0 10px 22px rgba(22,163,74,0.25);
+    }
+
+    .main-green-btn:hover {
+        background: linear-gradient(135deg, #15803d, #047857);
+        color: white;
+    }
+
+    .main-blue-btn {
+        background: linear-gradient(135deg, #2563eb, #0d6efd);
+        color: white;
+        box-shadow: 0 10px 22px rgba(37,99,235,0.25);
+    }
+
+    .feature-btn {
+        background: #f8fbff;
+        border: 1px solid #bfdbfe;
+        color: #2563eb;
+        min-width: 180px;
+        padding: 13px 18px;
+    }
+
+    .feature-btn:hover {
+        background: #eff6ff;
+        color: #1d4ed8;
+        transform: translateY(-2px);
+    }
+
+    .marks-btn {
+        background: #fff7ed;
+        border: 1px solid #fed7aa;
+        color: #ea580c;
+    }
+
+    .fees-btn {
+        background: #fffbeb;
+        border: 1px solid #fde68a;
+        color: #ca8a04;
+    }
+
+    .logs-btn {
+        background: #f5f3ff;
+        border: 1px solid #ddd6fe;
+        color: #7c3aed;
+    }
+
+    .report-pdf {
+        background: #fff1f2;
+        color: #dc2626;
+        border: 1px solid #fecaca;
+        min-width: 180px;
+    }
+
+    .report-excel {
+        background: #f0fdf4;
+        color: #15803d;
+        border: 1px solid #bbf7d0;
+        min-width: 180px;
+    }
+
+    .activity-card {
+        height: 430px;
+    }
+
+    .activity-card .card-body {
+        overflow-y: auto;
+        padding: 18px;
+    }
+
+    .activity-item {
+        position: relative;
+        padding-left: 46px;
+        padding-bottom: 18px;
+        margin-bottom: 18px;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .activity-icon {
+        position: absolute;
+        left: 0;
+        top: 2px;
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #8b5cf6, #6366f1);
+        color: white;
+        font-size: 15px;
+        box-shadow: 0 8px 18px rgba(99,102,241,0.25);
+    }
+
+    .recent-student-box {
+        background: linear-gradient(135deg, #eff6ff, #ffffff);
+        border: 1px solid #bfdbfe;
+        border-radius: 16px;
+        padding: 14px;
+        font-weight: 600;
+    }
+
+    .table thead {
+        background: #f1f5f9;
+        color: #111827;
+    }
+
+    .chart-box {
+        height: 220px;
+        position: relative;
+    }
+
+    .chart-box canvas {
+        width: 100% !important;
+        height: 100% !important;
+    }
+.container-fluid {
+    max-width: 1500px;
+    margin: auto;
+}
+
+.dashboard-bg {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background:
+        radial-gradient(circle at 90% 35%, rgba(168,85,247,0.18), transparent 28%),
+        radial-gradient(circle at 10% 95%, rgba(59,130,246,0.16), transparent 25%),
+        linear-gradient(135deg, #f8fbff 0%, #eef6ff 50%, #fff7fb 100%);
+}
+
+.dashboard-bg::before {
+    content: "";
+    position: absolute;
+    left: -80px;
+    bottom: -80px;
+    width: 420px;
+    height: 220px;
+    background: rgba(147,197,253,0.25);
+    border-radius: 50% 50% 0 0;
+}
+
+.dashboard-bg::after {
+    content: "";
+    position: absolute;
+    right: -120px;
+    top: 200px;
+    width: 300px;
+    height: 500px;
+    background: rgba(196,181,253,0.22);
+    border-radius: 60% 0 0 60%;
+}
+
+.card h5,
+.card h6 {
+    font-weight: 700;
+}
+
+.stat-card-blue,
+.stat-card-green,
+.stat-card-yellow {
+    min-height: 135px;
+    position: relative;
+}
+
+.stat-card-blue::after,
+.stat-card-green::after,
+.stat-card-yellow::after {
+    content: "•••\A•••\A•••";
+    white-space: pre;
+    position: absolute;
+    right: 22px;
+    bottom: 18px;
+    letter-spacing: 7px;
+    line-height: 10px;
+    opacity: 0.25;
+}
+
+.side-card {
+    border-radius: 22px;
+}
+
+.student-action-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+}
+
+.feature-btn {
+    width: 100%;
+    text-align: center;
+}
+
+.reports-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+}
+
+.report-pdf,
+.report-excel {
+    width: 100%;
+}
+
+@media (max-width: 992px) {
+    .reports-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .student-action-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.container-fluid {
+    max-width: 1350px;
+    margin: auto;
+}
+
+.col-lg-2 {
+    width: 240px;
+}
+
+.col-lg-8 {
+    width: calc(100% - 260px);
+}
+
+.row {
+    --bs-gutter-x: 1.5rem;
+}
+
+.card {
+    padding: 4px;
+}
+
+.stat-card-blue,
+.stat-card-green,
+.stat-card-yellow {
+    min-height: 125px;
+}
+
+.stat-card-blue .card-body,
+.stat-card-green .card-body,
+.stat-card-yellow .card-body {
+    padding: 24px;
+}
+
+.stat-card-blue h2,
+.stat-card-green h2 {
+    font-size: 42px;
+    font-weight: 800;
+}
+
+.activity-card {
+    height: 410px;
+}
+
+.feature-btn,
+.report-pdf,
+.report-excel {
+    font-size: 16px;
+}
+
+.chart-box {
+    height: 260px;
+}
+
+</style>
+
 
 </head>
 
 <body>
+    <div class="dashboard-bg"></div>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
 {% if messages %}
@@ -85,11 +421,11 @@
 
 </nav>
 
-<div class="container-fluid mt-4 px-5">
+<div class="container-fluid mt-4 px-3">
 <div class="row">
 
     <div class="col-lg-2">
-        <div class="card shadow-sm activity-card mb-3">
+        <div class="card shadow-sm activity-card side-card mb-3">
 
             <div class="card-header fw-bold">
                 🕒 Recent Activity
@@ -99,32 +435,33 @@
 
                 {% for log in activity_logs %}
 
-                <div class="border-bottom pb-2 mb-2">
-                    <strong>{{ log[0] }}</strong>
-                    <br>
-                    {{ log[1] }}
-                    <br>
-                    <small class="text-muted">{{ log[2] }}</small>
-                </div>
+                <div class="activity-item">
+    <div class="activity-icon">✏️</div>
+    <strong>{{ log[0] }}</strong>
+    <br>
+    <span>{{ log[1] }}</span>
+    <br>
+    <small class="text-muted">🕒 {{ log[2] }}</small>
+</div>
 
                 {% endfor %}
 
             </div>
 
         </div>
-<div class="card shadow-sm p-3 mt-3">
+<div class="card shadow-sm p-3 mt-3 side-card">
 
     <h5>🆕 Recent Students</h5>
 
     <ul class="list-group">
 
         {% for s in recent %}
-
-        <li class="list-group-item">
-            {{ s[0] }} (Roll {{ s[1] }})
-        </li>
-
-        {% endfor %}
+<div class="recent-student-box mb-2">
+    🎓 {{ s[0] }}
+    <br>
+    <small class="text-muted">Roll {{ s[1] }}</small>
+</div>
+{% endfor %}
 
     </ul>
 
@@ -136,8 +473,8 @@
     <div class="row mb-4">
 
         
-        <div class="col-md-3">
-            <div class="card shadow bg-primary text-white">
+        <div class="col-md-4">
+            <div class="card shadow-sm stat-card-blue">
                 <div class="card-body">
                     <h6>Total Students</h6>
                     <h2>{{ student_count }}</h2>
@@ -145,8 +482,8 @@
             </div>
         </div>
 
-        <div class="col-md-3">
-            <div class="card shadow bg-success text-white">
+        <div class="col-md-4">
+            <div class="card shadow-sm stat-card-green">
                 <div class="card-body">
                     <h6>Total Users</h6>
                     <h2>{{ user_count }}</h2>
@@ -154,8 +491,8 @@
             </div>
         </div>
 
-        <div class="col-md-3">
-            <div class="card shadow bg-dark text-white">
+        <div class="col-md-4">
+            <div class="card shadow-sm stat-card-yellow">
                 <div class="card-body">
                     <h5 class="mb-2">Logged In As</h5>
 
@@ -184,7 +521,7 @@
 
             <h5 class="mb-3">🎓 Students</h5>
 
-            <button class="btn btn-success mb-3"
+            <button class="btn main-green-btn mb-3"
                     data-bs-toggle="modal"
                     data-bs-target="#addStudentModal">
                 + Add Student
@@ -201,30 +538,19 @@
                 </div>
 
                 <div class="col-md-4">
-                    <button class="btn btn-primary w-100">
+                    <button class="btn main-blue-btn w-100">
                         Search
                     </button>
                 </div>
 
             </form>
 
-            <div class="d-flex flex-wrap gap-2">
+            <div class="student-action-grid">
 
-                <a href="/attendance" class="btn btn-dark">
-                    📅 Attendance
-                </a>
-
-                <a href="/marks" class="btn btn-dark">
-                    📝 Marks
-                </a>
-
-                <a href="/fees" class="btn btn-dark">
-                    💰 Fees
-                </a>
-
-                <a href="/activity-logs" class="btn btn-dark">
-                    🕒 Activity Logs
-                </a>
+                <a href="/attendance" class="btn feature-btn">📅 Attendance</a>
+<a href="/marks" class="btn feature-btn marks-btn">📝 Marks</a>
+<a href="/fees" class="btn feature-btn fees-btn">💰 Fees</a>
+<a href="/activity-logs" class="btn feature-btn logs-btn">🕒 Activity Logs</a>
 
             </div>
             </div>
@@ -241,7 +567,7 @@
             </p>
 
             <a href="/students/template"
-               class="btn btn-success mb-3">
+               class="btn main-green-btn mb-3 w-100">
                📥 Download Excel Template
             </a>
 
@@ -259,7 +585,7 @@
                 </div>
 
                 <div class="col-md-4">
-                    <button class="btn btn-dark w-100">
+                    <button class="btn btn-primary w-100">
                         Import Excel
                     </button>
                 </div>
@@ -274,16 +600,16 @@
     <div class="card shadow-sm p-3 mb-3">
         <h5 class="mb-3">📄 Reports</h5>
 
-        <div class="d-flex flex-wrap gap-2">
-            <a href="/reports/students/pdf" class="btn btn-danger">Student PDF</a>
-            <a href="/reports/students/excel" class="btn btn-success">Student Excel</a>
-            <a href="/reports/attendance/pdf" class="btn btn-danger">Attendance PDF</a>
-            <a href="/reports/attendance/excel" class="btn btn-success">Attendance Excel</a>
-            <a href="/reports/marks/pdf" class="btn btn-danger">Marks PDF</a>
-            <a href="/reports/marks/excel" class="btn btn-success">Marks Excel</a>
-            <a href="/reports/fees/pdf" class="btn btn-danger">Fees PDF</a>
-            <a href="/reports/fees/excel" class="btn btn-success">Fees Excel</a>
-        </div>
+        <div class="reports-grid">
+    <a href="/reports/students/pdf" class="btn report-pdf">📄 Student PDF</a>
+    <a href="/reports/students/excel" class="btn report-excel">📗 Student Excel</a>
+    <a href="/reports/attendance/pdf" class="btn report-pdf">📅 Attendance PDF</a>
+    <a href="/reports/attendance/excel" class="btn report-excel">📗 Attendance Excel</a>
+    <a href="/reports/marks/pdf" class="btn report-pdf">📄 Marks PDF</a>
+    <a href="/reports/marks/excel" class="btn report-excel">📗 Marks Excel</a>
+    <a href="/reports/fees/pdf" class="btn report-pdf">💰 Fees PDF</a>
+    <a href="/reports/fees/excel" class="btn report-excel">💰 Fees Excel</a>
+</div>
     </div>
 
     <div class="row mb-3">
