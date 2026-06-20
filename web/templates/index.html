@@ -297,16 +297,20 @@
 }
 
 .container-fluid {
-    max-width: 1350px;
+    max-width: 1700px;
+    width: 98%;
     margin: auto;
 }
-
-.col-lg-2 {
-    width: 240px;
+.students-card {
+    min-height: 420px;
 }
 
-.col-lg-8 {
-    width: calc(100% - 260px);
+.import-card {
+    min-height: 420px;
+}
+
+.chart-card {
+    min-height: 350px;
 }
 
 .row {
@@ -348,6 +352,34 @@
 .chart-box {
     height: 260px;
 }
+
+.stat-card-blue,
+.stat-card-green,
+.stat-card-yellow {
+    min-height: 150px;
+}
+
+.students-card,
+.import-card {
+    min-height: 320px;
+}
+
+.students-card {
+    min-height: 320px;
+}
+
+.import-card {
+    min-height: 320px;
+}
+
+.chart-card {
+    min-height: 340px;
+}
+
+.navbar .container-fluid {
+    max-width: 1700px;
+}
+
 
 </style>
 
@@ -468,7 +500,7 @@
 </div>
     </div>
 
-    <div class="col-lg-8">
+    <div class="col-lg-9">
         
     <div class="row mb-4">
 
@@ -516,8 +548,7 @@
 <div class="row mb-3">
 
     <div class="col-md-6">
-
-        <div class="card shadow-sm p-3 h-100">
+        <div class="card shadow-sm p-3 h-100 students-card">
 
             <h5 class="mb-3">🎓 Students</h5>
 
@@ -546,21 +577,19 @@
             </form>
 
             <div class="student-action-grid">
-
                 <a href="/attendance" class="btn feature-btn">📅 Attendance</a>
-<a href="/marks" class="btn feature-btn marks-btn">📝 Marks</a>
-<a href="/fees" class="btn feature-btn fees-btn">💰 Fees</a>
-<a href="/activity-logs" class="btn feature-btn logs-btn">🕒 Activity Logs</a>
+                <a href="/marks" class="btn feature-btn marks-btn">📝 Marks</a>
+                <a href="/fees" class="btn feature-btn fees-btn">💰 Fees</a>
+                <a href="/activity-logs" class="btn feature-btn logs-btn">🕒 Activity Logs</a>
+            </div>
 
-            </div>
-            </div>
         </div>
+    </div>
 
     <div class="col-md-6">
+        <div class="card shadow-sm p-3 h-100 import-card">
 
-        <div class="card shadow-sm p-3 h-100">
-
-            <h5 class="mb-3">📊 Bulk Import Students</h5>
+    <h5 class="mb-3">📊 Bulk Import Students</h5>
 
             <p class="text-muted mb-2">
                 Excel format: Name | Roll
@@ -615,8 +644,8 @@
     <div class="row mb-3">
 
         <div class="col-md-4">
-            <div class="card shadow-sm p-3">
-                <h5>📊 System Overview</h5>
+            <div class="card shadow-sm p-3 chart-card">
+    <h5>📊 System Overview</h5>
                 <div class="chart-box">
                     <canvas id="studentChart"></canvas>
                 </div>
@@ -624,8 +653,8 @@
         </div>
 
         <div class="col-md-4">
-            <div class="card shadow-sm p-3">
-                <h5>📅 Attendance</h5>
+            <div class="card shadow-sm p-3 chart-card">
+    <h5>📅 Attendance</h5>
                 <div class="chart-box">
                     <canvas id="attendanceChart"></canvas>
                 </div>
@@ -633,8 +662,8 @@
         </div>
 
         <div class="col-md-4">
-            <div class="card shadow-sm p-3">
-                <h5>💰 Fees</h5>
+            <div class="card shadow-sm p-3 chart-card">
+    <h5>💰 Fees</h5>
                 <div class="chart-box">
                     <canvas id="feesChart"></canvas>
                 </div>
